@@ -5,13 +5,13 @@ TFT_eSPI tft = TFT_eSPI();
 
 int ScreenNavCounter = 1;
 
-bool prevIn0=0, prevIn1=0, prevIn2=0, prevIn3=0, prevIn4=0;
+bool prevIn0=1, prevIn1=1, prevIn2=1, prevIn3=1, prevIn4=1;
 
-#define INPUT0 34 //  add direction
-#define INPUT1 35 //  add direction
-#define INPUT2 32 //  add direction
-#define INPUT3 36 //  add direction  
-#define INPUT4 39 //  add direction
+#define INPUT0 34
+#define INPUT1 35
+#define INPUT2 32
+#define INPUT3 36
+#define INPUT4 39
 
 void setup()
 {
@@ -21,6 +21,9 @@ void setup()
 
   pinMode(INPUT0, INPUT);
   pinMode(INPUT1, INPUT);
+  pinMode(INPUT2, INPUT);
+  pinMode(INPUT3, INPUT);
+  pinMode(INPUT4, INPUT);
 }
 
 void Homescreen()
@@ -69,10 +72,9 @@ void rightscreen()
 }
 
 void checkbuttons(){
-  if (digitalRead(INPUT0) != prevIn0)
+  if (digitalRead(INPUT0) == 0 and digitalRead(INPUT0) != prevIn0)
   {
     tft.fillScreen(0xFC00);
-    prevIn0 = digitalRead(INPUT0);
     Serial.println("I0 pressed");
 
     if (ScreenNavCounter > 0)
@@ -82,10 +84,10 @@ void checkbuttons(){
     else
       ScreenNavCounter = 2;
   }
-  if (digitalRead(INPUT1) != prevIn1)
+  prevIn0 = digitalRead(INPUT0);
+  if (digitalRead(INPUT1) == 0 and digitalRead(INPUT1) != prevIn1)
   {
     tft.fillScreen(0xFC00);
-    prevIn1 = digitalRead(INPUT1);
     Serial.println("I1 pressed");
     if (ScreenNavCounter < 2)
     {
@@ -94,35 +96,27 @@ void checkbuttons(){
     else
       ScreenNavCounter = 0;
   }
-  if (digitalRead(INPUT2) != prevIn2)
+  prevIn1 = digitalRead(INPUT1);
+  if (digitalRead(INPUT2) == 0 and digitalRead(INPUT2) != prevIn2)
   {
-    tft.fillScreen(0xFC00);
-    prevIn1 = digitalRead(INPUT2);
     Serial.println("I2 pressed");
-    if (){}
-    else
   }
-  if (digitalRead(INPUT3) != prevIn3)
+  prevIn2 = digitalRead(INPUT2);
+  if (digitalRead(INPUT3) == 0 and digitalRead(INPUT3) != prevIn3)
   {
-    tft.fillScreen(0xFC00);
-    prevIn1 = digitalRead(INPUT3);
     Serial.println("I3 pressed");
-    if (){}
-    else
   }
-  if (digitalRead(INPUT4) != prevIn4)
+  prevIn3 = digitalRead(INPUT3);
+  if (digitalRead(INPUT4) == 0 and digitalRead(INPUT4) != prevIn4)
   {
-    tft.fillScreen(0xFC00);
-    prevIn1 = digitalRead(INPUT4);
     Serial.println("I4 pressed");
-    if (){}
-    else
   }
+  prevIn4 = digitalRead(INPUT4);
 }
 
 void loop()
 {
-  void checkbuttons();
+  checkbuttons();
   switch (ScreenNavCounter)
   {
   case 0:
@@ -139,5 +133,3 @@ void loop()
     break;
   }
 }
-
-
