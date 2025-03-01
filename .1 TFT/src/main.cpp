@@ -1,73 +1,143 @@
 #include <Arduino.h>
-#include <TFT_eSPI.h>        
+#include <TFT_eSPI.h>
 
 TFT_eSPI tft = TFT_eSPI();
 
+int ScreenNavCounter = 1;
+
+bool prevIn0=0, prevIn1=0, prevIn2=0, prevIn3=0, prevIn4=0;
+
+#define INPUT0 34 //  add direction
+#define INPUT1 35 //  add direction
+#define INPUT2 32 //  add direction
+#define INPUT3 36 //  add direction  
+#define INPUT4 39 //  add direction
+
 void setup()
 {
-             
-  tft.init();  
+  Serial.begin(115200);
+  tft.init();
+  tft.fillScreen(0xFC00);
 
+  pinMode(INPUT0, INPUT);
+  pinMode(INPUT1, INPUT);
+}
+
+void Homescreen()
+{
+  tft.setRotation(2);
+  tft.setTextColor(0xFFFF);
+  tft.setTextSize(5);
+
+  tft.setCursor(30, 30);
+  tft.println("Lon: ");
+  tft.setCursor(30, 90);
+  tft.println("Lat: ");
+  tft.setCursor(30, 150);
+  tft.println("Alt: ");
+  tft.setCursor(30, 210);
+  tft.println("Speed: ");
+
+  tft.setTextSize(5);
+  tft.setCursor(60, 300);
+  tft.print("10");
+  tft.print(" km/h");
+}
+
+void leftscreen()
+{
+  tft.setRotation(3);
+  tft.setTextColor(0xFFFF);
+  tft.setTextSize(5);
+
+  tft.setCursor(30, 30);
+  tft.println("this is a");
+  tft.setCursor(30, 90);
+  tft.println("second screen");
+}
+
+void rightscreen()
+{
+  tft.setRotation(3);
+  tft.setTextColor(0xFFFF);
+  tft.setTextSize(5);
+
+  tft.setCursor(30, 30);
+  tft.println("u guessed it,");
+  tft.setCursor(30, 90);
+  tft.println("a third screen");
+}
+
+void checkbuttons(){
+  if (digitalRead(INPUT0) != prevIn0)
+  {
+    tft.fillScreen(0xFC00);
+    prevIn0 = digitalRead(INPUT0);
+    Serial.println("I0 pressed");
+
+    if (ScreenNavCounter > 0)
+    {
+      ScreenNavCounter--;
+    }
+    else
+      ScreenNavCounter = 2;
+  }
+  if (digitalRead(INPUT1) != prevIn1)
+  {
+    tft.fillScreen(0xFC00);
+    prevIn1 = digitalRead(INPUT1);
+    Serial.println("I1 pressed");
+    if (ScreenNavCounter < 2)
+    {
+      ScreenNavCounter++;
+    }
+    else
+      ScreenNavCounter = 0;
+  }
+  if (digitalRead(INPUT2) != prevIn2)
+  {
+    tft.fillScreen(0xFC00);
+    prevIn1 = digitalRead(INPUT2);
+    Serial.println("I2 pressed");
+    if (){}
+    else
+  }
+  if (digitalRead(INPUT3) != prevIn3)
+  {
+    tft.fillScreen(0xFC00);
+    prevIn1 = digitalRead(INPUT3);
+    Serial.println("I3 pressed");
+    if (){}
+    else
+  }
+  if (digitalRead(INPUT4) != prevIn4)
+  {
+    tft.fillScreen(0xFC00);
+    prevIn1 = digitalRead(INPUT4);
+    Serial.println("I4 pressed");
+    if (){}
+    else
+  }
 }
 
 void loop()
 {
-  tft.init();
-  tft.setRotation(3);
-  tft.setCursor(49,30);
-  tft.setTextColor(0xFFFF);
-  tft.setTextSize(5);
-  tft.fillScreen(0xFC00); 
-  delay(1000);     
-  
-  tft.print("Z");
-  delay(300);
-  tft.print("I");
-  delay(300);
-  tft.print("O");
-  delay(300);
-  tft.print(" ");
-  delay(300);
-  tft.print("T");
-  delay(300);
-  tft.print("E");
-  delay(300);
-  tft.print("S");
-  delay(300);
-  tft.print("T");
-  delay(300);
-  tft.print("E");
-  delay(300);
-  tft.print("R");
-  delay(300);
-  tft.print(".");
-  delay(300);
-  tft.print("I");
-  delay(300);
-  tft.println("T");
-  delay(500);
+  void checkbuttons();
+  switch (ScreenNavCounter)
+  {
+  case 0:
+    leftscreen();
+    break;
+  case 1:
+    Homescreen();
+    break;
+  case 2:
+    rightscreen();
+    break;
 
-  tft.drawRect(85,87,147,20,0xFFFF);tft.fillRect(85,87,147,20,0xFFFF);
-  tft.drawChar(90,90,0x50,0xFC00,0xFFFF,2);delay(200);//P 
-  tft.drawChar(100,90,0x4C,0xFC00,0xFFFF,2);delay(200);//L
-  tft.drawChar(110,90,0x41,0xFC00,0xFFFF,2);delay(200);//A
-  tft.drawChar(120,90,0x54,0xFC00,0xFFFF,2);delay(200);//T
-  tft.drawChar(130,90,0x46,0xFC00,0xFFFF,2);delay(200);//F
-  tft.drawChar(140,90,0x4F,0xFC00,0xFFFF,2);delay(200);//O
-  tft.drawChar(150,90,0x52,0xFC00,0xFFFF,2);delay(200);//R
-  tft.drawChar(160,90,0x4D,0xFC00,0xFFFF,2);delay(200);//M
-  tft.drawChar(170,90,0x49,0xFC00,0xFFFF,2);delay(200);//I
-  tft.drawChar(180,90,0x4F,0xFC00,0xFFFF,2);delay(200);//O
-  tft.drawChar(190,90,0x2E,0xFC00,0xFFFF,2);delay(200);//.
-  tft.drawChar(200,90,0x69,0xFC00,0xFFFF,2);delay(200);//i
-  tft.drawChar(210,90,0x6E,0xFC00,0xFFFF,2);delay(200);//n
-  tft.drawChar(220,90,0x69,0xFC00,0xFFFF,2);delay(200);//i
-  delay(1000);
-
-  tft.setCursor(25,150);
-  tft.print("T");delay(250);tft.print("F");delay(250);tft.print("T");delay(250);tft.print(" ");tft.print("L");delay(250);tft.print("C");delay(250);tft.print("D");delay(250);tft.print(" ");tft.print("I");delay(250);tft.print("L");delay(250);tft.print("I");delay(250);tft.print("9");delay(250);tft.print("3");delay(250);tft.print("4");delay(250);tft.print("1");delay(250);
-  tft.setCursor(200,230);tft.print("2");delay(250);tft.print(".");delay(250);tft.print("4");delay(250);tft.setTextSize(2.5);tft.print("''");
-  delay (2000);
-  tft.fillScreen(0xFFFF);
-  delay(1000);
+  default:
+    break;
+  }
 }
+
+
