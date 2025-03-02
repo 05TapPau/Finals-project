@@ -1,39 +1,23 @@
 #include <Arduino.h>
 #include <TFT_eSPI.h>
 
-#include <TinyGPSPlus.h>
+TFT_eSPI tft = TFT_eSPI();
 
-//  IO Buttons (5Way)
+int ScreenNavCounter = 1;
+
+bool prevIn0=1, prevIn1=1, prevIn2=1, prevIn3=1, prevIn4=1;
+
 #define INPUT0 34
 #define INPUT1 35
 #define INPUT2 32
 #define INPUT3 36
 #define INPUT4 39
 
-//  Serial coms GPS
-#define RXD2 17
-#define TXD2 16
-#define GPS_BAUD 9600
-
-
-HardwareSerial gpsSerial(2);
-TinyGPSPlus NEO6;
-TFT_eSPI tft = TFT_eSPI();
-
-
-int ScreenNavCounter = 1;
-bool prevIn0 = 1, prevIn1 = 1, prevIn2 = 1, prevIn3 = 1, prevIn4 = 1;
-
-
 void setup()
 {
   Serial.begin(115200);
-
-  gpsSerial.begin(GPS_BAUD, SERIAL_8N1, RXD2, TXD2);
-  Serial.println("Serial 2 started at 9600 baud rate");
-
   tft.init();
-  tft.fillScreen(0x0000);
+  tft.fillScreen(0xFC00);
 
   pinMode(INPUT0, INPUT);
   pinMode(INPUT1, INPUT);
@@ -87,8 +71,7 @@ void rightscreen()
   tft.println("a third screen");
 }
 
-void checkbuttons()
-{
+void checkbuttons(){
   if (digitalRead(INPUT0) == 0 and digitalRead(INPUT0) != prevIn0)
   {
     tft.fillScreen(0xFC00);
@@ -133,31 +116,7 @@ void checkbuttons()
 
 void loop()
 {
-while (gpsSerial.available())
-{
-  NEO6.encode(gpsSerial.read());
-  if (NEO6.location.isUpdated())
-  {
-    Serial.print("Latitude= ");
-    Serial.print(NEO6.location.lat(), 6);
-    Serial.print(" Longitude= ");
-    Serial.println(NEO6.location.lng(), 6);
-    Serial.print("Time= ");
-    Serial.print(NEO6.time.hour());
-    Serial.print(":");
-    Serial.print(NEO6.time.minute());
-    Serial.print(":");
-    Serial.println(NEO6.time.second());
-  }
-}
-delay(1000);
-Serial.println();
-Serial.println("-------------------------------");
-Serial.println();
-
-
-  // checkbuttons();
-  /*
+  checkbuttons();
   switch (ScreenNavCounter)
   {
   case 0:
@@ -173,5 +132,4 @@ Serial.println();
   default:
     break;
   }
-  */
 }
