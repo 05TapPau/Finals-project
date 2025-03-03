@@ -19,74 +19,74 @@ HardwareSerial gpsSerial(2);
 TinyGPSPlus NEO6;
 TFT_eSPI tft = TFT_eSPI();
 
+// A sample NMEA stream cuz GPS wont get a fix ffs
+int simSeconds = 0;
+const char *gpsStream =
+    "$GPGGA,135135.130,4640.778,N,01109.212,E,1,12,1.0,0.0,M,0.0,M,,*6A\r\n"
+    "$GPRMC,135135.130,A,4640.778,N,01109.212,E,,,030325,000.0,W*79\r\n";
+
 int ScreenNavCounter = 1;
 bool prevIn0 = 1, prevIn1 = 1, prevIn2 = 1, prevIn3 = 1, prevIn4 = 1;
 
-void setup()
-{
-  Serial.begin(115200);
-
-  gpsSerial.begin(GPS_BAUD, SERIAL_8N1, RXD2, TXD2);
-  Serial.println("Serial 2 started at 9600 baud rate");
-
-  tft.init();
-  tft.fillScreen(0x0000);
-
-  pinMode(INPUT0, INPUT);
-  pinMode(INPUT1, INPUT);
-  pinMode(INPUT2, INPUT);
-  pinMode(INPUT3, INPUT);
-  pinMode(INPUT4, INPUT);
-}
 
 void Homescreen()
 {
   tft.setRotation(2);
-  tft.setTextColor(0xFFFF);
-  tft.setTextSize(5);
+  tft.fillScreen(0xFC00);
+  tft.setTextColor(0xFFFF,0xFC00,true);
+  tft.setTextSize(7);
+  //tft.setTextFont(1); // font 2 kinda nice
 
-  tft.setCursor(30, 30);
-  tft.println("Lon: ");
-  tft.setCursor(30, 90);
-  tft.println("Lat: ");
-  tft.setCursor(30, 150);
-  tft.println("Alt: ");
-  tft.setCursor(30, 210);
-  tft.println("Speed: ");
+  tft.setCursor(120, 10);
+  tft.println(NEO6.time.hour());
+  tft.print("  ");
+  tft.setCursor(120, 70);
+  tft.println(NEO6.time.minute());
+  tft.setCursor(120, 130);
+  tft.println(simSeconds/*NEO6.time.second()*/);
 
-  tft.setTextSize(5);
-  tft.setCursor(60, 300);
-  tft.print("10");
-  tft.print(" km/h");
+  /*
+tft.setCursor(30, 30);
+tft.println("Date: ");
+tft.setCursor(30, 90);
+tft.print(NEO6.date.day());
+tft.print(".");
+tft.print(NEO6.date.month());
+tft.print(".");
+tft.print(NEO6.date.year());
+*/
 }
 
 void leftscreen()
 {
   tft.setRotation(2);
+  tft.fillScreen(0xFC00);
   tft.setTextColor(0xFFFF);
   tft.setTextSize(5);
 
-  tft.setCursor(30, 30);
-  tft.println("Date: ");
-  tft.setCursor(30, 90);
-  tft.print(NEO6.date.day());
-  tft.print(".");
-  tft.print(NEO6.date.month());
-  tft.print(".");
-  tft.print(NEO6.date.year());
-  tft.setCursor(30, 150);
-  tft.println("Time: ");
-  tft.setCursor(30, 210);
-  tft.print(NEO6.time.hour());
-  tft.print(":");
-  tft.print(NEO6.time.minute());
-  tft.print(":");
-  tft.println(NEO6.time.second());
+  tft.setCursor(10, 10);
+  tft.println("Lon: ");
+  tft.setCursor(10, 60);
+  tft.print(NEO6.location.lng(),3);
+  tft.setCursor(10, 110);
+  tft.println("Lat: ");
+  tft.setCursor(10, 160);
+  tft.print(NEO6.location.lat(),3);
+  tft.setCursor(10, 210);
+  tft.println("Alt: ");
+  tft.setCursor(10, 260);
+  tft.print(NEO6.altitude.meters(),3);
+  tft.setCursor(10, 310);
+  tft.println("Speed: ");
+  tft.setCursor(40, 360);
+  tft.print(NEO6.speed.kmph());
+  tft.print(" km/h");
 }
 
 void rightscreen()
 {
   tft.setRotation(3);
+  tft.fillScreen(0xFC00);
   tft.setTextColor(0xFFFF);
   tft.setTextSize(5);
 
@@ -100,7 +100,6 @@ void checkbuttons()
 {
   if (digitalRead(INPUT0) == 0 and digitalRead(INPUT0) != prevIn0)
   {
-    tft.fillScreen(0xFC00);
     Serial.println("I0 pressed");
 
     if (ScreenNavCounter > 0)
@@ -113,7 +112,6 @@ void checkbuttons()
   prevIn0 = digitalRead(INPUT0);
   if (digitalRead(INPUT1) == 0 and digitalRead(INPUT1) != prevIn1)
   {
-    tft.fillScreen(0xFC00);
     Serial.println("I1 pressed");
     if (ScreenNavCounter < 2)
     {
@@ -140,11 +138,38 @@ void checkbuttons()
   prevIn4 = digitalRead(INPUT4);
 }
 
+void setup()
+{
+  tft.init();
+  tft.fillScreen(0x0000);
+
+  Serial.begin(115200);
+  gpsSerial.begin(GPS_BAUD, SERIAL_8N1, RXD2, TXD2);
+  Serial.println("Serial 2 started at 9600 baud rate");
+
+  pinMode(INPUT0, INPUT);
+  pinMode(INPUT1, INPUT);
+  pinMode(INPUT2, INPUT);
+  pinMode(INPUT3, INPUT);
+  pinMode(INPUT4, INPUT);
+}
+
 void loop()
 {
+  // get fake nema info for gps cuz gps wont get a fix
+  while (*gpsStream)
+    NEO6.encode(*gpsStream++);
+  
+  if (simSeconds==60)
+    simSeconds=0;
+  else
+  simSeconds++;
 
+  Serial.println(simSeconds);
+  delay(100);
   checkbuttons();
 
+  // screennavigation
   switch (ScreenNavCounter)
   {
   case 0:
@@ -156,7 +181,6 @@ void loop()
   case 2:
     rightscreen();
     break;
-
   default:
     break;
   }
