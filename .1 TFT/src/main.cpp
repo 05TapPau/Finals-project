@@ -15,15 +15,12 @@
 #define TXD2 16
 #define GPS_BAUD 9600
 
-
 HardwareSerial gpsSerial(2);
 TinyGPSPlus NEO6;
 TFT_eSPI tft = TFT_eSPI();
 
-
 int ScreenNavCounter = 1;
 bool prevIn0 = 1, prevIn1 = 1, prevIn2 = 1, prevIn3 = 1, prevIn4 = 1;
-
 
 void setup()
 {
@@ -65,14 +62,26 @@ void Homescreen()
 
 void leftscreen()
 {
-  tft.setRotation(3);
+  tft.setRotation(2);
   tft.setTextColor(0xFFFF);
   tft.setTextSize(5);
 
   tft.setCursor(30, 30);
-  tft.println("this is a");
+  tft.println("Date: ");
   tft.setCursor(30, 90);
-  tft.println("second screen");
+  tft.print(NEO6.date.day());
+  tft.print(".");
+  tft.print(NEO6.date.month());
+  tft.print(".");
+  tft.print(NEO6.date.year());
+  tft.setCursor(30, 150);
+  tft.println("Time: ");
+  tft.setCursor(30, 210);
+  tft.print(NEO6.time.hour());
+  tft.print(":");
+  tft.print(NEO6.time.minute());
+  tft.print(":");
+  tft.println(NEO6.time.second());
 }
 
 void rightscreen()
@@ -133,31 +142,9 @@ void checkbuttons()
 
 void loop()
 {
-while (gpsSerial.available())
-{
-  NEO6.encode(gpsSerial.read());
-  if (NEO6.location.isUpdated())
-  {
-    Serial.print("Latitude= ");
-    Serial.print(NEO6.location.lat(), 6);
-    Serial.print(" Longitude= ");
-    Serial.println(NEO6.location.lng(), 6);
-    Serial.print("Time= ");
-    Serial.print(NEO6.time.hour());
-    Serial.print(":");
-    Serial.print(NEO6.time.minute());
-    Serial.print(":");
-    Serial.println(NEO6.time.second());
-  }
-}
-delay(1000);
-Serial.println();
-Serial.println("-------------------------------");
-Serial.println();
 
+  checkbuttons();
 
-  // checkbuttons();
-  /*
   switch (ScreenNavCounter)
   {
   case 0:
@@ -173,5 +160,4 @@ Serial.println();
   default:
     break;
   }
-  */
 }
