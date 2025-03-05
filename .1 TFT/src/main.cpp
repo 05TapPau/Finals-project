@@ -154,8 +154,7 @@ void setup()
   pinMode(INPUT4, INPUT);
 }
 
-void loop()
-{
+void fakenema (){
   // get fake nema info for gps cuz gps wont get a fix
   while (*gpsStream)
     NEO6.encode(*gpsStream++);
@@ -167,6 +166,9 @@ void loop()
 
   Serial.println(simSeconds);
   delay(100);
+}
+
+void NavFrames(){
   checkbuttons();
 
   // screennavigation
@@ -184,4 +186,16 @@ void loop()
   default:
     break;
   }
+}
+
+void loop()
+{
+  while (gpsSerial.available() > 0)
+  {
+    // get the byte data from the GPS
+    char gpsData = gpsSerial.read();
+    Serial.print(gpsData);
+  }
+  delay(1000);
+  Serial.println("-------------------------------");
 }
