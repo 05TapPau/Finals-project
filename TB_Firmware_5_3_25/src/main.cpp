@@ -12,11 +12,12 @@
 //  Have fun
 
 // Testing only
-int simSeconds = 0;
+unsigned long currentMillis = 0, previousMillis = 0;
 
 //  included Librries
 #include <Arduino.h>
 #include <TFT_eSPI.h>
+#include <FastLED.h>
 
 // All Button related stuff
 //   Input Buttons (5Way)  No use if used with touch
@@ -78,7 +79,8 @@ void checkButtons() // Debounce handled by Hardware 100mF across Buttons
     edgedetected[4] = true;
     gen_edge_det = 1;
   }
-  else{
+  else
+  {
     edgedetected[0] = false;
     edgedetected[1] = false;
     edgedetected[2] = false;
@@ -96,14 +98,18 @@ void checkButtons() // Debounce handled by Hardware 100mF across Buttons
 }
 
 //  All TFT LCD erlated stuff
-/*  TFT esp defines   >> Usersetup.h
-CS      D22
-Reset   D4
-D/C     D21
-SDI     D23
-SCK     D18
-LED     D5
+/*  TFT esp defines   >> Usersetup.h  for my TrackBoard PCB
+
+//#define TFT_MISO 19   //  Not used
+#define TFT_MOSI 23
+#define TFT_SCLK 18
+#define TFT_CS   33     // Chip select control pin
+#define TFT_DC   25     // Data Command control pin
+//#define TFT_RST  4    // Reset pin (could connect to RST pin)
+#define TFT_RST  -1     // Set TFT_RST to -1 if display RESET is connected to ESP32 board RST
+#define TFT_BL   26  // LED back-light
 */
+
 TFT_eSPI tft = TFT_eSPI();
 
 void Homescreen()
@@ -112,12 +118,12 @@ void Homescreen()
   // tft.setTextFont(1); // font 2 kinda nice
 
   tft.setCursor(120, 10);
-  tft.println("15" /*NEO6.time.hour()*/);
+  tft.println((millis() / (10 * 60 * 60)) % 24 /*NEO6.time.hour()*/);
   tft.print("  ");
   tft.setCursor(120, 70);
-  tft.println("15" /*NEO6.time.minute()*/);
+  tft.println((millis() / (10 * 60)) % 60 /*NEO6.time.minute()*/);
   tft.setCursor(120, 130);
-  tft.println((millis()/1000)%60 /*NEO6.time.second()*/);
+  tft.println((millis() / 10) % 60 /*NEO6.time.second()*/);
 
   /*
 tft.setCursor(30, 30);
@@ -169,7 +175,8 @@ void rightscreen()
 void NavFrames()
 {
   // screennavigation
-  if(gen_edge_det){
+  if (gen_edge_det)
+  {
     tft.fillScreen(0x0000);
   }
   switch (ScreenNavCounter)
@@ -188,8 +195,38 @@ void NavFrames()
   }
 }
 
+//  Fastled
+// How many leds in your strip?
+#define NUM_LEDS 1
+#define DATA_PIN 13
+CRGB leds[NUM_LEDS];
+
+int hue = 0;
+
+void Ledshenanigans()
+{
+  leds[0] = CHSV(hue++, 255, 255);
+  FastLED.show();
+  if (hue == 255)
+    hue = 0;
+}
+
+//  Mainly for debuging and sanity checks
+void StillAlive()
+{
+  currentMillis = millis();
+  if (currentMillis - previousMillis >= 100)
+  {
+    previousMillis = currentMillis;
+    digitalWrite(2, !digitalRead(2));
+  }
+}
+
 void setup()
 {
+  FastLED.addLeds<WS2812, DATA_PIN, RGB>(leds, NUM_LEDS);
+  FastLED.setBrightness(255);
+
   tft.init();
   tft.fillScreen(0x0000);
   tft.setTextSize(7);
@@ -202,10 +239,17 @@ void setup()
   pinMode(INPUT2, INPUT);
   pinMode(INPUT3, INPUT);
   pinMode(INPUT4, INPUT);
+  pinMode(2, OUTPUT);
+
+  pinMode(26, OUTPUT);
+  digitalWrite(26, HIGH);
 }
 
 void loop()
 {
-  checkButtons();   //  Buttons work
+  checkButtons(); //  Buttons work
   NavFrames();
+  Ledshenanigans();
+
+  StillAlive(); // just blink build in led 1Hz
 }
