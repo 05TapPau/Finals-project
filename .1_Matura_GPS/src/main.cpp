@@ -31,6 +31,8 @@ void setup(){
     Serial.print(GPS_BAUD);
     Serial.print(" baud"); // => Dev_Debug(ReportGPSSetup);
   }
+  pinMode(2, OUTPUT);
+  digitalWrite(2, HIGH);
 }
 
 void loop(){
@@ -41,6 +43,7 @@ void loop(){
     Serial.print(gpsData);
   }
   delay(1000);
+  digitalWrite(2, !digitalRead(2));
   Serial.println("-------------------------------");
 }
 
