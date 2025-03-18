@@ -40,13 +40,6 @@ void checkButtons() // Debounce handled by Hardware 100mF across Buttons
     Serial.println("I0 pressed");
     edgedetected[0] = true;
     gen_edge_det = 1;
-
-    if (ScreenNavCounter > 0)
-    {
-      ScreenNavCounter--;
-    }
-    else
-      ScreenNavCounter = 2;
   }
   else if (digitalRead(INPUT1) == 0 and digitalRead(INPUT1) != PrevState[1])
   {
@@ -78,6 +71,13 @@ void checkButtons() // Debounce handled by Hardware 100mF across Buttons
     Serial.println("I4 pressed");
     edgedetected[4] = true;
     gen_edge_det = 1;
+
+    if (ScreenNavCounter > 0)
+    {
+      ScreenNavCounter--;
+    }
+    else
+      ScreenNavCounter = 2;
   }
   else
   {
@@ -163,13 +163,21 @@ void leftscreen()
 
 void rightscreen()
 {
-  tft.setRotation(3);
+  tft.setRotation(2);
   tft.setTextSize(5);
 
-  tft.setCursor(30, 30);
-  tft.println("u guessed it,");
-  tft.setCursor(30, 90);
-  tft.println("a third screen");
+  tft.setCursor(10, 10);
+  tft.println("third");
+  tft.setCursor(10, 60);
+  // tft.print(NEO6.location.lng(),3);
+  tft.setCursor(10, 110);
+  tft.println("screen");
+  tft.setCursor(10, 160);
+  // tft.print(NEO6.location.lat(),3);
+  tft.setCursor(10, 210);
+  tft.println("idk");
+  tft.setCursor(10, 260);
+  // tft.print(NEO6.altitude.meters(),3);
 }
 
 void NavFrames()
@@ -210,6 +218,16 @@ void Ledshenanigans()
   if (hue == 255)
     hue = 0;
 }
+
+//  All GPS related stuff
+// A sample NMEA stream cuz GPS wont get a fix ffs
+int simSeconds = 0;
+const char *gpsStream =
+    "$GPGGA,135135.130,4640.778,N,01109.212,E,1,12,1.0,0.0,M,0.0,M,,*6A\r\n"
+    "$GPRMC,135135.130,A,4640.778,N,01109.212,E,,,030325,000.0,W*79\r\n";
+
+//  All IMU related stuff
+//  All SD related stuff
 
 //  Mainly for debuging and sanity checks
 void StillAlive()
