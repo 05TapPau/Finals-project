@@ -16,6 +16,7 @@ unsigned long currentMillis = 0, previousMillis = 0;
 
 //  included Librries
 #include <Arduino.h>
+#include "FS.h"
 #include <TFT_eSPI.h>
 #include <FastLED.h>
 
@@ -31,7 +32,14 @@ unsigned long currentMillis = 0, previousMillis = 0;
 bool edgedetected[5] = {0, 0, 0, 0, 0}; //  flags to recognize if there was a falling edge (only for 1 cycle)
 bool PrevState[5] = {0, 0, 0, 0, 0};    // used to check for falling edges (Buttons pullups)
 bool gen_edge_det = 0;                  // gets set if there was a edge detected no matter what pin
-int ScreenNavCounter = 1;
+int NavCounterLR = 0, NavCounterUD = 0, NavCounter = 0; //  Navigation counter for left right and up down
+
+void updateCounter(int increment)
+{
+  NavCounter = (NavCounter + increment + 9) % 9; // Ensure counter stays within 0-9 range
+  Serial.print("Counter: ");
+  Serial.println(NavCounter);
+}
 
 void checkButtons() // Debounce handled by Hardware 100mF across Buttons
 {
@@ -40,6 +48,7 @@ void checkButtons() // Debounce handled by Hardware 100mF across Buttons
     Serial.println("I0 pressed");
     edgedetected[0] = true;
     gen_edge_det = 1;
+    updateCounter(3); // Add 3
   }
   else if (digitalRead(INPUT1) == 0 and digitalRead(INPUT1) != PrevState[1])
   {
@@ -47,12 +56,7 @@ void checkButtons() // Debounce handled by Hardware 100mF across Buttons
     edgedetected[1] = true;
     gen_edge_det = 1;
 
-    if (ScreenNavCounter < 2)
-    {
-      ScreenNavCounter++;
-    }
-    else
-      ScreenNavCounter = 0;
+    updateCounter(1); // Add 1
   }
   else if (digitalRead(INPUT2) == 0 and digitalRead(INPUT2) != PrevState[2])
   {
@@ -68,16 +72,7 @@ void checkButtons() // Debounce handled by Hardware 100mF across Buttons
   }
   else if (digitalRead(INPUT4) == 0 and digitalRead(INPUT4) != PrevState[4])
   {
-    Serial.println("I4 pressed");
-    edgedetected[4] = true;
-    gen_edge_det = 1;
-
-    if (ScreenNavCounter > 0)
-    {
-      ScreenNavCounter--;
-    }
-    else
-      ScreenNavCounter = 2;
+    updateCounter(-3); // Subtract 3
   }
   else
   {
@@ -98,8 +93,7 @@ void checkButtons() // Debounce handled by Hardware 100mF across Buttons
 }
 
 //  All TFT LCD erlated stuff
-/*  TFT esp defines   >> Usersetup.h  for my TrackBoard PCB
-
+/*  TFT esp defines   >> Usersetup.h  for TrackBoard PCB
 //#define TFT_MISO 19   //  Not used
 #define TFT_MOSI 23
 #define TFT_SCLK 18
@@ -108,15 +102,22 @@ void checkButtons() // Debounce handled by Hardware 100mF across Buttons
 //#define TFT_RST  4    // Reset pin (could connect to RST pin)
 #define TFT_RST  -1     // Set TFT_RST to -1 if display RESET is connected to ESP32 board RST
 #define TFT_BL   26  // LED back-light
+#define TOUCH_CS 27     // Chip select pin (T_CS) of touch screen
 */
+
+#define CALIBRATION_FILE "/calibrationData"
+
+uint16_t x, y;
+uint16_t calibrationData[5];
+uint8_t calDataOK = 0;
 
 TFT_eSPI tft = TFT_eSPI();
 
-void Homescreen()
-{
-  tft.setRotation(2);
-  // tft.setTextFont(1); // font 2 kinda nice
 
+
+void ScreenZero()
+{
+  tft.setTextSize(4);
   tft.setCursor(120, 10);
   tft.println((millis() / (10 * 60 * 60)) % 24 /*NEO6.time.hour()*/);
   tft.print("  ");
@@ -137,10 +138,10 @@ tft.print(NEO6.date.year());
 */
 }
 
-void leftscreen()
+void ScreenOne()
 {
-  tft.setRotation(2);
-  tft.setTextSize(5);
+  
+  tft.setTextSize(4);
 
   tft.setCursor(10, 10);
   tft.println("Lon: ");
@@ -161,10 +162,9 @@ void leftscreen()
   tft.print(" km/h");
 }
 
-void rightscreen()
+void ScreenTwo()
 {
-  tft.setRotation(2);
-  tft.setTextSize(5);
+  tft.setTextSize(4);
 
   tft.setCursor(10, 10);
   tft.println("third");
@@ -180,28 +180,162 @@ void rightscreen()
   // tft.print(NEO6.altitude.meters(),3);
 }
 
-void NavFrames()
+void Screenthree()
+{
+  tft.setTextSize(4);
+
+  tft.setCursor(10, 10);
+  tft.println("fourth");
+  tft.setCursor(10, 110);
+  tft.println("screen");
+}
+
+void ScreenFour()
+{
+  tft.setTextSize(4);
+
+  tft.setCursor(10, 10);
+  tft.println("fifth");
+  tft.setCursor(10, 110);
+  tft.println("screen");
+}
+
+void ScreenFive()
+{
+  tft.setTextSize(4);
+
+  tft.setCursor(10, 10);
+  tft.println("sixth");
+  tft.setCursor(10, 110);
+  tft.println("screen");
+}
+
+void ScreenSix()
+{
+  tft.setTextSize(4);
+
+  tft.setCursor(10, 10);
+  tft.println("seventh");
+  tft.setCursor(10, 110);
+  tft.println("screen");
+}
+
+void ScreenSeven()
+{
+  tft.setTextSize(4);
+
+  tft.setCursor(10, 10);
+  tft.println("eighth");
+  tft.setCursor(10, 110);
+  tft.println("screen");
+}
+
+void Screeneight()
+{
+  tft.setTextSize(4);
+
+  tft.setCursor(10, 10);
+  tft.println("ninth");
+  tft.setCursor(10, 110);
+  tft.println("screen");
+}
+
+void ScreenNav()
 {
   // screennavigation
   if (gen_edge_det)
   {
-    tft.fillScreen(0x0000);
+    tft.fillScreen(TFT_BLACK);
   }
-  switch (ScreenNavCounter)
+  
+  switch (NavCounter)
   {
   case 0:
-    leftscreen();
+    ScreenZero();
     break;
   case 1:
-    Homescreen();
+    ScreenOne();
     break;
   case 2:
-    rightscreen();
+    ScreenTwo();
+    break;
+  case 3:
+  Screenthree();
+    break;
+  case 4:
+  ScreenFour();
+    break;
+  case 5:
+  ScreenFive();
+    break;
+  case 6:
+  ScreenSix();
+    break;
+  case 7:
+  ScreenSeven();
+    break;
+  case 8:
+  Screeneight();
     break;
   default:
     break;
   }
 }
+
+void HandleTouchscreen()
+{
+  if (tft.getTouch(&x, &y))
+  {
+    if (x > 106 and x < 214 and y < 330 and y > 180 and !edgedetected[2]) //  center
+    {
+      Serial.println("I2 pressed");
+      edgedetected[2] = true;
+      gen_edge_det = 1;
+    }
+    if (x < 106 and x > 0   and y < 330 and y > 180 and !edgedetected[4]) //  Up
+    {
+      Serial.println("I4 pressed");
+      edgedetected[4] = true;
+      gen_edge_det = 1;
+
+      updateCounter(3); // Add 3
+    }
+    if (x < 320 and x > 214 and y < 330 and y > 180 and !edgedetected[1]) //  Down
+    {
+      Serial.println("I1 pressed");
+      edgedetected[1] = true;
+      gen_edge_det = 1;
+
+      updateCounter(-3); // Subtract 3
+    }
+    if (y < 480 and y > 330 and x < 214 and x > 106 and !edgedetected[0]) //  Left
+    {
+      Serial.println("I0 pressed");
+      edgedetected[0] = true;
+      gen_edge_det = 1;
+
+      updateCounter(1); // Add 1
+    }
+    if (y < 180 and y > 30  and x < 214 and x > 106 and !edgedetected[3]) //  Right
+    {
+      Serial.println("I3 pressed");
+      edgedetected[3] = true;
+      gen_edge_det = 1;
+
+      updateCounter(-1); // Subtract 1
+    }
+  }
+  else
+  {
+    edgedetected[0] = false;
+    edgedetected[1] = false;
+    edgedetected[2] = false;
+    edgedetected[3] = false;
+    edgedetected[4] = false;
+    gen_edge_det = 0;
+  }
+}
+
 
 //  Fastled
 // How many leds in your strip?
@@ -242,31 +376,84 @@ void StillAlive()
 
 void setup()
 {
-  FastLED.addLeds<WS2812, DATA_PIN, RGB>(leds, NUM_LEDS);
-  FastLED.setBrightness(255);
-
-  tft.init();
-  tft.fillScreen(0x0000);
-  tft.setTextSize(7);
-  tft.setTextColor(0xFFFF, 0x0000, true);
-
-  Serial.begin(115200);
-
+  // Pins used for Buttons, alive Led and backlight
   pinMode(INPUT0, INPUT);
   pinMode(INPUT1, INPUT);
   pinMode(INPUT2, INPUT);
   pinMode(INPUT3, INPUT);
   pinMode(INPUT4, INPUT);
   pinMode(2, OUTPUT);
-
   pinMode(26, OUTPUT);
   digitalWrite(26, HIGH);
+
+  //  Start serial comunication for debuging
+  Serial.begin(115200);
+
+  //  Setup ws2812 led
+  FastLED.addLeds<WS2812, DATA_PIN, RGB>(leds, NUM_LEDS);
+  FastLED.setBrightness(25);
+
+  //  Start tft
+  tft.init();
+  tft.fillScreen(TFT_BLACK);
+
+  // calibrate touch
+  tft.setRotation(3);
+  tft.fillScreen((0xFFFF));
+
+  tft.setCursor(20, 0, 2);
+  tft.setTextColor(TFT_WHITE,TFT_BLACK);
+  tft.setTextSize(2);
+  tft.println("calibration run");
+  // check file system
+  if (!SPIFFS.begin())
+  {
+    Serial.println("formatting file system");
+
+    SPIFFS.format();
+    SPIFFS.begin();
+  }
+  // check if calibration file exists
+  if (SPIFFS.exists(CALIBRATION_FILE))
+  {
+    File f = SPIFFS.open(CALIBRATION_FILE, "r");
+    if (f)
+    {
+      if (f.readBytes((char *)calibrationData, 14) == 14)
+        calDataOK = 1;
+      f.close();
+    }
+  }
+  if (calDataOK)
+  {
+    // calibration data valid
+    tft.setTouch(calibrationData);
+  }
+  else
+  {
+    // data not valid. recalibrate
+    tft.calibrateTouch(calibrationData, TFT_WHITE, TFT_RED, 15);
+    // store data
+    File f = SPIFFS.open(CALIBRATION_FILE, "w");
+    if (f)
+    {
+      f.write((const unsigned char *)calibrationData, 14);
+      f.close();
+    }
+  }
+
+  tft.fillScreen(TFT_BLACK);
+  tft.setTextSize(3);
+  tft.setTextColor(TFT_WHITE, TFT_BLACK, true);
+  tft.setRotation(2);
+  tft.setTextFont(1); // font 2 kinda nice
 }
 
 void loop()
 {
-  checkButtons(); //  Buttons work
-  NavFrames();
+  //checkButtons(); //  Buttons work
+  HandleTouchscreen();
+  ScreenNav();
   Ledshenanigans();
 
   StillAlive(); // just blink build in led 1Hz
