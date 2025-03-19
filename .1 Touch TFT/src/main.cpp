@@ -19,7 +19,7 @@ TFT_eSPI tft = TFT_eSPI();
 
 int ScreenNavCounter = 1;
 
-bool prevIn0=1, prevIn1=1, prevIn2=1, prevIn3=1, prevIn4=1;
+bool prevIn0 = 1, prevIn1 = 1, prevIn2 = 1, prevIn3 = 1, prevIn4 = 1;
 
 #define INPUT0 34
 #define INPUT1 35
@@ -28,14 +28,7 @@ bool prevIn0=1, prevIn1=1, prevIn2=1, prevIn3=1, prevIn4=1;
 #define INPUT4 39
 #define CALIBRATION_FILE "/calibrationData"
 
-#define X0 0
-#define Y0 0
-#define XMAX 480  //  change depending on rotation
-#define YMAX 320  //  change depending on rotation
-#define X13rd XMAX/3
-#define Y13rd YMAX/3
-#define X13rd XMAX/3*2
-#define Y13rd YMAX/3*2
+uint16_t x, y;
 
 /*
 void setup()
@@ -93,7 +86,8 @@ void rightscreen()
   tft.setCursor(30, 90);
   tft.println("a third screen");
 }
-void checkbuttons(){
+void checkbuttons()
+{
   if (digitalRead(INPUT0) == 0 and digitalRead(INPUT0) != prevIn0)
   {
     tft.fillScreen(0xFC00);
@@ -136,8 +130,8 @@ void checkbuttons(){
   prevIn4 = digitalRead(INPUT4);
 }
 
-
-void setup(void) {
+void setup(void)
+{
   uint16_t calibrationData[5];
   uint8_t calDataOK = 0;
 
@@ -150,11 +144,13 @@ void setup(void) {
   tft.fillScreen((0xFFFF));
 
   tft.setCursor(20, 0, 2);
-  tft.setTextColor(TFT_BLACK, TFT_WHITE);  tft.setTextSize(1);
+  tft.setTextColor(TFT_BLACK, TFT_WHITE);
+  tft.setTextSize(2);
   tft.println("calibration run");
 
   // check file system
-  if (!SPIFFS.begin()) {
+  if (!SPIFFS.begin())
+  {
     Serial.println("formatting file system");
 
     SPIFFS.format();
@@ -162,23 +158,29 @@ void setup(void) {
   }
 
   // check if calibration file exists
-  if (SPIFFS.exists(CALIBRATION_FILE)) {
+  if (SPIFFS.exists(CALIBRATION_FILE))
+  {
     File f = SPIFFS.open(CALIBRATION_FILE, "r");
-    if (f) {
+    if (f)
+    {
       if (f.readBytes((char *)calibrationData, 14) == 14)
         calDataOK = 1;
       f.close();
     }
   }
-  if (calDataOK) {
+  if (calDataOK)
+  {
     // calibration data valid
     tft.setTouch(calibrationData);
-  } else {
+  }
+  else
+  {
     // data not valid. recalibrate
     tft.calibrateTouch(calibrationData, TFT_WHITE, TFT_RED, 15);
     // store data
     File f = SPIFFS.open(CALIBRATION_FILE, "w");
-    if (f) {
+    if (f)
+    {
       f.write((const unsigned char *)calibrationData, 14);
       f.close();
     }
@@ -186,47 +188,75 @@ void setup(void) {
 
   tft.fillScreen((0xFFFF));
   pinMode(26, OUTPUT);
-  digitalWrite(26,HIGH);
+  digitalWrite(26, HIGH);
 }
 
-void loop() {
-  //tft.drawLine(0,0,160,106,0x0000);
-  //tft.drawLine(160,106,320,106,0x0000);
-  //tft.drawLine(320,106,480,0,0x0000);
-  //tft.drawLine(0,320,160,213,0x0000);
-  //tft.drawLine(160,213,320,213,0x0000);
-  //tft.drawLine(320,213,480,320,0x0000);
-  //tft.drawLine(160,106,160,213,0x0000);
-  //tft.drawLine(320,106,320,213,0x0000);
+void loop()
+{
+  // tft.fillTriangle(0,0,160,0,160,106,TFT_ORANGE);
+  // tft.fillTriangle(320,0,320,106,480,0,TFT_ORANGE);
+  // tft.fillTriangle(0,320,160,213,160,320,TFT_ORANGE);
+  // tft.fillTriangle(320,213,320,320,480,320,TFT_ORANGE);
+  // tft.fillTriangle(0,0,0,106,160,106,TFT_RED);
+  // tft.fillTriangle(0,213,0,320,160,213,TFT_RED);
+  // tft.fillTriangle(480,0,480,106,320,106,TFT_RED);
+  // tft.fillTriangle(480,213,480,320,320,213,TFT_RED);
+
+  //tft.fillRect(0, 0, 30, 320, TFT_BLACK);       // Infocenter?
+  //tft.fillRect(180, 0, 150, 106, TFT_ORANGE);   // Right
+  //tft.fillRect(180, 214, 150, 106, TFT_ORANGE); // Left
+  //tft.fillRect(30, 106, 150, 108, TFT_RED);     // Up
+  //tft.fillRect(330, 106, 150, 108, TFT_RED);    // Down
+  //tft.fillRect(450, 214, 30, 108, TFT_BLACK);   // bottomleft
+
+  if (tft.getTouch(&x, &y))
+  {
+    if (x < 30 and x > 0)
+    {
+      tft.fillRect(0, 0, 30, 320, TFT_GREEN); // Infocenter?
+    }
+    if (x < 330 and x > 180 and y < 214 and y > 106)
+    {
+      tft.fillRect(180, 106, 150, 108, TFT_GREEN);    // Center pushed
+    }
+    if (x < 180 and x > 30 and y < 214 and y > 106)
+    {
+      tft.fillRect(30, 106, 150, 108, TFT_GREEN);     // Up pushed
+    }
+    if (x < 480 and x > 330 and y < 214 and y > 106)
+    {
+      tft.fillRect(330, 106, 150, 108, TFT_GREEN);    // Down pushed
+    }
+    if (x < 330 and x > 180 and y < 320 and y > 214)
+    {
+      tft.fillRect(180, 214, 150, 106, TFT_GREEN); // Left
+    }
+    if (x < 330 and x > 180 and y < 106 and y > 0)
+    {
+      tft.fillRect(180, 0, 150, 106, TFT_GREEN);   // Right
+    }
+    if (x < 480 and x > 450 and y < 320 and y > 214)
+    {
+      tft.fillRect(450, 214, 30, 108, TFT_GREEN);   // bottomleft
+    }
+    
+  }
+  else
+    tft.fillRect(180, 106,  150,  108, TFT_BLACK);      // Center not pushed
+    tft.fillRect(0,   0,    30,   320, TFT_BLACK);      // Infocenter? not pushed
+    tft.fillRect(30,  106,  150,  108, TFT_BLACK);      // Up not pushed
+    tft.fillRect(330, 106,  150,  108, TFT_BLACK);      // Down not pushed
+    tft.fillRect(180, 0,    150,  106, TFT_BLACK);      // Right
+    tft.fillRect(180, 214,  150,  106, TFT_BLACK);      // Left
+    tft.fillRect(450, 214,  30,   108, TFT_BLACK);      // bottomleft
 
 
-  tft.fillTriangle(0,0,160,0,160,106,TFT_ORANGE);
-  tft.fillRect(160,0,160,106,TFT_ORANGE);
-  tft.fillTriangle(320,0,320,106,480,0,TFT_ORANGE);
+  if (tft.getTouch(&x, &y))
+  {
 
-  tft.fillTriangle(0,320,160,213,160,320,TFT_ORANGE);
-  tft.fillRect(160,213,160,107,TFT_ORANGE);
-  tft.fillTriangle(320,213,320,320,480,320,TFT_ORANGE);
-
-  tft.fillTriangle(0,0,0,106,160,106,TFT_RED);
-  tft.fillRect(0,107,160,106,TFT_RED);
-  tft.fillTriangle(0,213,0,320,160,213,TFT_RED);
-
-  tft.fillTriangle(480,0,480,106,320,106,TFT_RED);
-  tft.fillRect(320,107,160,106,TFT_RED);
-  tft.fillTriangle(480,213,480,320,320,213,TFT_RED);
-
-  uint16_t x, y;
-  static uint16_t color;
-
-  if (tft.getTouch(&x, &y)) {
-
-    tft.setCursor(5, 5, 2);
+    tft.setCursor(40, 5, 2);
     tft.printf("x: %i     ", x);
-    tft.setCursor(5, 20, 2);
+    tft.setCursor(40, 40, 2);
     tft.printf("y: %i    ", y);
-
-    tft.drawPixel(x, y, color);
-    color += 155;
   }
 }
