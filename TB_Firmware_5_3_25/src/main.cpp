@@ -27,7 +27,7 @@ unsigned long currentMillis = 0, previousMillis = 0;
 #define INPUT3 36 // Left
 #define INPUT4 39 // Down
 
-//  Flags for Button presses
+//  Flags for Button presses (and or touch recogintion future?)
 bool edgedetected[5] = {0, 0, 0, 0, 0}; //  flags to recognize if there was a falling edge (only for 1 cycle)
 bool PrevState[5] = {0, 0, 0, 0, 0};    // used to check for falling edges (Buttons pullups)
 bool gen_edge_det = 0;                  // gets set if there was a edge detected no matter what pin

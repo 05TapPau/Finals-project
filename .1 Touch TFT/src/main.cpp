@@ -28,6 +28,10 @@ bool prevIn0 = 1, prevIn1 = 1, prevIn2 = 1, prevIn3 = 1, prevIn4 = 1;
 #define INPUT4 39
 #define CALIBRATION_FILE "/calibrationData"
 
+bool edgedetected[5] = {0, 0, 0, 0, 0}; //  flags to recognize if there was a falling edge (only for 1 cycle)
+bool PrevState[5] = {0, 0, 0, 0, 0};    // used to check for falling edges (Buttons pullups)
+bool gen_edge_det = 0;                  // gets set if there was a edge detected no matter what pin
+
 uint16_t x, y;
 
 /*
@@ -85,49 +89,6 @@ void rightscreen()
   tft.println("u guessed it,");
   tft.setCursor(30, 90);
   tft.println("a third screen");
-}
-void checkbuttons()
-{
-  if (digitalRead(INPUT0) == 0 and digitalRead(INPUT0) != prevIn0)
-  {
-    tft.fillScreen(0xFC00);
-    Serial.println("I0 pressed");
-
-    if (ScreenNavCounter > 0)
-    {
-      ScreenNavCounter--;
-    }
-    else
-      ScreenNavCounter = 2;
-  }
-  prevIn0 = digitalRead(INPUT0);
-  if (digitalRead(INPUT1) == 0 and digitalRead(INPUT1) != prevIn1)
-  {
-    tft.fillScreen(0xFC00);
-    Serial.println("I1 pressed");
-    if (ScreenNavCounter < 2)
-    {
-      ScreenNavCounter++;
-    }
-    else
-      ScreenNavCounter = 0;
-  }
-  prevIn1 = digitalRead(INPUT1);
-  if (digitalRead(INPUT2) == 0 and digitalRead(INPUT2) != prevIn2)
-  {
-    Serial.println("I2 pressed");
-  }
-  prevIn2 = digitalRead(INPUT2);
-  if (digitalRead(INPUT3) == 0 and digitalRead(INPUT3) != prevIn3)
-  {
-    Serial.println("I3 pressed");
-  }
-  prevIn3 = digitalRead(INPUT3);
-  if (digitalRead(INPUT4) == 0 and digitalRead(INPUT4) != prevIn4)
-  {
-    Serial.println("I4 pressed");
-  }
-  prevIn4 = digitalRead(INPUT4);
 }
 
 void setup(void)
@@ -202,58 +163,100 @@ void loop()
   // tft.fillTriangle(480,0,480,106,320,106,TFT_RED);
   // tft.fillTriangle(480,213,480,320,320,213,TFT_RED);
 
-  //tft.fillRect(0, 0, 30, 320, TFT_BLACK);       // Infocenter?
-  //tft.fillRect(180, 0, 150, 106, TFT_ORANGE);   // Right
-  //tft.fillRect(180, 214, 150, 106, TFT_ORANGE); // Left
-  //tft.fillRect(30, 106, 150, 108, TFT_RED);     // Up
-  //tft.fillRect(330, 106, 150, 108, TFT_RED);    // Down
-  //tft.fillRect(450, 214, 30, 108, TFT_BLACK);   // bottomleft
+  // tft.fillRect(0, 0, 30, 320, TFT_BLACK);       // Infocenter?
+  // tft.fillRect(180, 0, 150, 106, TFT_ORANGE);   // Right
+  // tft.fillRect(180, 214, 150, 106, TFT_ORANGE); // Left
+  // tft.fillRect(30, 106, 150, 108, TFT_RED);     // Up
+  // tft.fillRect(330, 106, 150, 108, TFT_RED);    // Down
+  // tft.fillRect(450, 214, 30, 108, TFT_BLACK);   // bottomleft
 
   if (tft.getTouch(&x, &y))
   {
+    /*
     if (x < 30 and x > 0)
     {
       tft.fillRect(0, 0, 30, 320, TFT_GREEN); // Infocenter?
     }
-    if (x < 330 and x > 180 and y < 214 and y > 106)
-    {
-      tft.fillRect(180, 106, 150, 108, TFT_GREEN);    // Center pushed
-    }
-    if (x < 180 and x > 30 and y < 214 and y > 106)
-    {
-      tft.fillRect(30, 106, 150, 108, TFT_GREEN);     // Up pushed
-    }
-    if (x < 480 and x > 330 and y < 214 and y > 106)
-    {
-      tft.fillRect(330, 106, 150, 108, TFT_GREEN);    // Down pushed
-    }
-    if (x < 330 and x > 180 and y < 320 and y > 214)
-    {
-      tft.fillRect(180, 214, 150, 106, TFT_GREEN); // Left
-    }
-    if (x < 330 and x > 180 and y < 106 and y > 0)
-    {
-      tft.fillRect(180, 0, 150, 106, TFT_GREEN);   // Right
-    }
     if (x < 480 and x > 450 and y < 320 and y > 214)
     {
-      tft.fillRect(450, 214, 30, 108, TFT_GREEN);   // bottomleft
+      tft.fillRect(450, 214, 30, 108, TFT_GREEN);   // bottomleft return whatever
     }
-    
+    */
+    if (x < 330 and x > 180 and y < 214 and y > 106 and !edgedetected[2]) // Center pushed
+    {
+      Serial.println("I2 pressed");
+      edgedetected[2] = true;
+      gen_edge_det = 1;
+
+      tft.fillRect(180, 106, 150, 108, TFT_GREEN);
+    }
+    if (x < 180 and x > 30 and y < 214 and y > 106 and !edgedetected[4]) // Up pushed
+    {
+      Serial.println("I4 pressed");
+      edgedetected[4] = true;
+      gen_edge_det = 1;
+
+      tft.fillRect(30, 106, 150, 108, TFT_GREEN);
+    }
+    if (x < 480 and x > 330 and y < 214 and y > 106 and !edgedetected[1]) // Down pushed
+    {
+      Serial.println("I1 pressed");
+      edgedetected[1] = true;
+      gen_edge_det = 1;
+      tft.fillRect(330, 106, 150, 108, TFT_GREEN);
+    }
+    if (x < 330 and x > 180 and y < 320 and y > 214 and !edgedetected[0]) // Left
+    {
+      Serial.println("I0 pressed");
+      edgedetected[0] = true;
+      gen_edge_det = 1;
+
+      if (ScreenNavCounter < 2)
+      {
+        ScreenNavCounter++;
+      }
+      else
+        ScreenNavCounter = 0;
+
+      tft.fillRect(180, 214, 150, 106, TFT_GREEN);
+    }
+    if (x < 330 and x > 180 and y < 106 and y > 0 and !edgedetected[3]) // Right
+    {
+      Serial.println("I3 pressed");
+      edgedetected[3] = true;
+      gen_edge_det = 1;
+
+      if (ScreenNavCounter > 0)
+      {
+        ScreenNavCounter--;
+      }
+      else
+        ScreenNavCounter = 2;
+
+      tft.fillRect(180, 0, 150, 106, TFT_GREEN);
+    }
   }
   else
-    tft.fillRect(180, 106,  150,  108, TFT_BLACK);      // Center not pushed
-    tft.fillRect(0,   0,    30,   320, TFT_BLACK);      // Infocenter? not pushed
-    tft.fillRect(30,  106,  150,  108, TFT_BLACK);      // Up not pushed
-    tft.fillRect(330, 106,  150,  108, TFT_BLACK);      // Down not pushed
-    tft.fillRect(180, 0,    150,  106, TFT_BLACK);      // Right
-    tft.fillRect(180, 214,  150,  106, TFT_BLACK);      // Left
-    tft.fillRect(450, 214,  30,   108, TFT_BLACK);      // bottomleft
+  {
+    edgedetected[0] = false;
+    edgedetected[1] = false;
+    edgedetected[2] = false;
+    edgedetected[3] = false;
+    edgedetected[4] = false;
 
+    gen_edge_det = 0;
+
+    /*tft.fillRect(0,   0,    30,   320, TFT_BLACK);      // Infocenter? not pushed
+      tft.fillRect(450, 214,  30,   108, TFT_BLACK);      // bottomleft*/
+    tft.fillRect(180, 106, 150, 108, TFT_BLACK); // Center not pushed
+    tft.fillRect(30, 106, 150, 108, TFT_BLACK);  // Up not pushed
+    tft.fillRect(330, 106, 150, 108, TFT_BLACK); // Down not pushed
+    tft.fillRect(180, 0, 150, 106, TFT_BLACK);   // Right
+    tft.fillRect(180, 214, 150, 106, TFT_BLACK); // Left
+  }
 
   if (tft.getTouch(&x, &y))
   {
-
     tft.setCursor(40, 5, 2);
     tft.printf("x: %i     ", x);
     tft.setCursor(40, 40, 2);
