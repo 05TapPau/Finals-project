@@ -77,25 +77,35 @@ const char *gpsStream =
 //  All usable Screens
 void ScreenZero()
 {
-  tft.setTextSize(4);
-  tft.setCursor(120, 10);
-  tft.println((millis() / (10 * 60 * 60)) % 24 /*NEO6.time.hour()*/);
-  tft.print("  ");
-  tft.setCursor(120, 70);
-  tft.println((millis() / (10 * 60)) % 60 /*NEO6.time.minute()*/);
-  tft.setCursor(120, 130);
-  tft.println((millis() / 10) % 60 /*NEO6.time.second()*/);
+  tft.setTextSize(7);
+  tft.drawRoundRect(50, 50, 220, 100, 10, TFT_WHITE);   //  Time
+  tft.setCursor(65, 75);
+  tft.println("00"/*(millis() / (10 * 60 * 60)) % 24 NEO6.time.hour()*/);
+  tft.setCursor(180, 75);
+  tft.println("00"/*(millis() / (10 * 60)) % 60 NEO6.time.minute()*/);
+
+  tft.drawRoundRect(50, 190, 220, 100, 10, TFT_WHITE);  //  Date
+  tft.drawRoundRect(50, 330, 220, 100, 10, TFT_WHITE);  //  Temp
+
 
   /*
-tft.setCursor(30, 30);
-tft.println("Date: ");
-tft.setCursor(30, 90);
-tft.print(NEO6.date.day());
-tft.print(".");
-tft.print(NEO6.date.month());
-tft.print(".");
-tft.print(NEO6.date.year());
-*/
+  tft.setCursor(120, 10);
+  tft.println((millis() / (10 * 60 * 60)) % 24 /*NEO6.time.hour());
+  tft.print("  ");
+  tft.setCursor(120, 70);
+  tft.println((millis() / (10 * 60)) % 60 /*NEO6.time.minute());
+  tft.setCursor(120, 130);
+  tft.println((millis() / 10) % 60 /*NEO6.time.second());
+
+  tft.setCursor(30, 30);
+  tft.println("Date: ");
+  tft.setCursor(30, 90);
+  tft.print(NEO6.date.day());
+  tft.print(".");
+  tft.print(NEO6.date.month());
+  tft.print(".");
+  tft.print(NEO6.date.year());
+  */
 }
 void ScreenOne()
 { 
@@ -198,6 +208,7 @@ void ScreenNav()
   if (gen_edge_det)
   {
     tft.fillScreen(TFT_BLACK);
+    gen_edge_det = false;
   }
   
   switch (NavCounter)
@@ -374,8 +385,8 @@ void Ledshenanigans()
   -  1 Lon Lat Alt Speed
   -  2 Sattelite count and heading/course
   -  3 Big Speedometer
-  -  4 List of sattelites
-  -  6 Big Compass
+  -  4 List of sattelites else maybe a matrix for WS2812 8x8 controll?/ button toactivate g sensing activation of WS2812
+  -  6 Big Compass no sensor  would be cool tho
 
 
 //  Handle IMU MPU6050
