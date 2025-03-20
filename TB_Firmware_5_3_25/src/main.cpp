@@ -15,7 +15,7 @@
 //  included Librries
 #include <Arduino.h>
 #include "FS.h"
-#include <TFT_eSPI.h>
+#include <TFT_eSPI.h>   // remove from libdeps
 #include <FastLED.h>
 
 // for testing only
