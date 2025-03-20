@@ -11,14 +11,15 @@
 //  If you found this code helpfull and or have any questions contact me i would be interested to se what others do with this prototype
 //  Have fun
 
-// Testing only
-unsigned long currentMillis = 0, previousMillis = 0;
 
 //  included Librries
 #include <Arduino.h>
 #include "FS.h"
 #include <TFT_eSPI.h>
 #include <FastLED.h>
+
+// for testing only
+unsigned long currentMillis = 0, previousMillis = 0;
 
 // All Button related stuff
 //   Input Buttons (5Way)  No use if used with touch
@@ -32,8 +33,208 @@ unsigned long currentMillis = 0, previousMillis = 0;
 bool edgedetected[5] = {0, 0, 0, 0, 0}; //  flags to recognize if there was a falling edge (only for 1 cycle)
 bool PrevState[5] = {0, 0, 0, 0, 0};    // used to check for falling edges (Buttons pullups)
 bool gen_edge_det = 0;                  // gets set if there was a edge detected no matter what pin
-int NavCounterLR = 0, NavCounterUD = 0, NavCounter = 0; //  Navigation counter for left right and up down
+int NavCounter = 0; //  Navigation counter for left right and up down
 
+//  All TFT LCD erlated stuff
+/*  TFT esp defines   >> Usersetup.h  for TrackBoard PCB
+//#define TFT_MISO 19   //  Not used
+#define TFT_MOSI 23
+#define TFT_SCLK 18
+#define TFT_CS   33     // Chip select control pin
+#define TFT_DC   25     // Data Command control pin
+//#define TFT_RST  4    // Reset pin (could connect to RST pin)
+#define TFT_RST  -1     // Set TFT_RST to -1 if display RESET is connected to ESP32 board RST
+#define TFT_BL   26  // LED back-light
+#define TOUCH_CS 27     // Chip select pin (T_CS) of touch screen
+*/
+#define CALIBRATION_FILE "/calibrationData"
+
+uint16_t x, y;
+uint16_t calibrationData[5];
+uint8_t calDataOK = 0;
+
+TFT_eSPI tft = TFT_eSPI();
+
+//  Fastled
+// How many leds in your strip?
+#define NUM_LEDS 1
+#define DATA_PIN 13
+CRGB leds[NUM_LEDS];
+
+int hue = 0;
+
+
+//  All GPS related stuff
+// A sample NMEA stream cuz GPS wont get a fix ffs
+int simSeconds = 0;
+const char *gpsStream =
+    "$GPGGA,135135.130,4640.778,N,01109.212,E,1,12,1.0,0.0,M,0.0,M,,*6A\r\n"
+    "$GPRMC,135135.130,A,4640.778,N,01109.212,E,,,030325,000.0,W*79\r\n";
+
+//  All IMU related stuff
+//  All SD related stuff
+
+//  All usable Screens
+void ScreenZero()
+{
+  tft.setTextSize(4);
+  tft.setCursor(120, 10);
+  tft.println((millis() / (10 * 60 * 60)) % 24 /*NEO6.time.hour()*/);
+  tft.print("  ");
+  tft.setCursor(120, 70);
+  tft.println((millis() / (10 * 60)) % 60 /*NEO6.time.minute()*/);
+  tft.setCursor(120, 130);
+  tft.println((millis() / 10) % 60 /*NEO6.time.second()*/);
+
+  /*
+tft.setCursor(30, 30);
+tft.println("Date: ");
+tft.setCursor(30, 90);
+tft.print(NEO6.date.day());
+tft.print(".");
+tft.print(NEO6.date.month());
+tft.print(".");
+tft.print(NEO6.date.year());
+*/
+}
+void ScreenOne()
+{ 
+  tft.setTextSize(4);
+
+  tft.setCursor(10, 10);
+  tft.println("Lon: ");
+  tft.setCursor(10, 60);
+  // tft.print(NEO6.location.lng(),3);
+  tft.setCursor(10, 110);
+  tft.println("Lat: ");
+  tft.setCursor(10, 160);
+  // tft.print(NEO6.location.lat(),3);
+  tft.setCursor(10, 210);
+  tft.println("Alt: ");
+  tft.setCursor(10, 260);
+  // tft.print(NEO6.altitude.meters(),3);
+  tft.setCursor(10, 310);
+  tft.println("Speed: ");
+  tft.setCursor(40, 360);
+  // tft.print(NEO6.speed.kmph());
+  tft.print(" km/h");
+}
+void ScreenTwo()
+{
+  tft.setTextSize(4);
+
+  tft.setCursor(10, 10);
+  tft.println("third");
+  tft.setCursor(10, 60);
+  // tft.print(NEO6.location.lng(),3);
+  tft.setCursor(10, 110);
+  tft.println("screen");
+  tft.setCursor(10, 160);
+  // tft.print(NEO6.location.lat(),3);
+  tft.setCursor(10, 210);
+  tft.println("idk");
+  tft.setCursor(10, 260);
+  // tft.print(NEO6.altitude.meters(),3);
+}
+void Screenthree()
+{
+  tft.setTextSize(4);
+
+  tft.setCursor(10, 10);
+  tft.println("fourth");
+  tft.setCursor(10, 110);
+  tft.println("screen");
+}
+void ScreenFour()
+{
+  tft.setTextSize(4);
+
+  tft.setCursor(10, 10);
+  tft.println("fifth");
+  tft.setCursor(10, 110);
+  tft.println("screen");
+}
+void ScreenFive()
+{
+  tft.setTextSize(4);
+
+  tft.setCursor(10, 10);
+  tft.println("sixth");
+  tft.setCursor(10, 110);
+  tft.println("screen");
+}
+void ScreenSix()
+{
+  tft.setTextSize(4);
+
+  tft.setCursor(10, 10);
+  tft.println("seventh");
+  tft.setCursor(10, 110);
+  tft.println("screen");
+}
+void ScreenSeven()
+{
+  tft.setTextSize(4);
+
+  tft.setCursor(10, 10);
+  tft.println("eighth");
+  tft.setCursor(10, 110);
+  tft.println("screen");
+}
+void Screeneight()
+{
+  tft.setTextSize(4);
+
+  tft.setCursor(10, 10);
+  tft.println("ninth");
+  tft.setCursor(10, 110);
+  tft.println("screen");
+}
+
+//  Screen Navigation
+void ScreenNav()
+{
+  // screennavigation
+  if (gen_edge_det)
+  {
+    tft.fillScreen(TFT_BLACK);
+  }
+  
+  switch (NavCounter)
+  {
+  case 0:
+    ScreenZero();
+    break;
+  case 1:
+    ScreenOne();
+    break;
+  case 2:
+    ScreenTwo();
+    break;
+  case 3:
+  Screenthree();
+    break;
+  case 4:
+  ScreenFour();
+    break;
+  case 5:
+  ScreenFive();
+    break;
+  case 6:
+  ScreenSix();
+    break;
+  case 7:
+  ScreenSeven();
+    break;
+  case 8:
+  Screeneight();
+    break;
+  default:
+    break;
+  }
+}
+
+//  Handle Buttons/Touchscreen inputs
 void updateCounter(int increment)
 {
   NavCounter = (NavCounter + increment + 9) % 9; // Ensure counter stays within 0-9 range
@@ -41,6 +242,7 @@ void updateCounter(int increment)
   Serial.println(NavCounter);
 }
 
+//  check for Button presses
 void checkButtons() // Debounce handled by Hardware 100mF across Buttons
 {
   if (digitalRead(INPUT0) == 0 and digitalRead(INPUT0) != PrevState[0])
@@ -92,196 +294,7 @@ void checkButtons() // Debounce handled by Hardware 100mF across Buttons
   PrevState[4] = digitalRead(INPUT4);
 }
 
-//  All TFT LCD erlated stuff
-/*  TFT esp defines   >> Usersetup.h  for TrackBoard PCB
-//#define TFT_MISO 19   //  Not used
-#define TFT_MOSI 23
-#define TFT_SCLK 18
-#define TFT_CS   33     // Chip select control pin
-#define TFT_DC   25     // Data Command control pin
-//#define TFT_RST  4    // Reset pin (could connect to RST pin)
-#define TFT_RST  -1     // Set TFT_RST to -1 if display RESET is connected to ESP32 board RST
-#define TFT_BL   26  // LED back-light
-#define TOUCH_CS 27     // Chip select pin (T_CS) of touch screen
-*/
-
-#define CALIBRATION_FILE "/calibrationData"
-
-uint16_t x, y;
-uint16_t calibrationData[5];
-uint8_t calDataOK = 0;
-
-TFT_eSPI tft = TFT_eSPI();
-
-
-
-void ScreenZero()
-{
-  tft.setTextSize(4);
-  tft.setCursor(120, 10);
-  tft.println((millis() / (10 * 60 * 60)) % 24 /*NEO6.time.hour()*/);
-  tft.print("  ");
-  tft.setCursor(120, 70);
-  tft.println((millis() / (10 * 60)) % 60 /*NEO6.time.minute()*/);
-  tft.setCursor(120, 130);
-  tft.println((millis() / 10) % 60 /*NEO6.time.second()*/);
-
-  /*
-tft.setCursor(30, 30);
-tft.println("Date: ");
-tft.setCursor(30, 90);
-tft.print(NEO6.date.day());
-tft.print(".");
-tft.print(NEO6.date.month());
-tft.print(".");
-tft.print(NEO6.date.year());
-*/
-}
-
-void ScreenOne()
-{
-  
-  tft.setTextSize(4);
-
-  tft.setCursor(10, 10);
-  tft.println("Lon: ");
-  tft.setCursor(10, 60);
-  // tft.print(NEO6.location.lng(),3);
-  tft.setCursor(10, 110);
-  tft.println("Lat: ");
-  tft.setCursor(10, 160);
-  // tft.print(NEO6.location.lat(),3);
-  tft.setCursor(10, 210);
-  tft.println("Alt: ");
-  tft.setCursor(10, 260);
-  // tft.print(NEO6.altitude.meters(),3);
-  tft.setCursor(10, 310);
-  tft.println("Speed: ");
-  tft.setCursor(40, 360);
-  // tft.print(NEO6.speed.kmph());
-  tft.print(" km/h");
-}
-
-void ScreenTwo()
-{
-  tft.setTextSize(4);
-
-  tft.setCursor(10, 10);
-  tft.println("third");
-  tft.setCursor(10, 60);
-  // tft.print(NEO6.location.lng(),3);
-  tft.setCursor(10, 110);
-  tft.println("screen");
-  tft.setCursor(10, 160);
-  // tft.print(NEO6.location.lat(),3);
-  tft.setCursor(10, 210);
-  tft.println("idk");
-  tft.setCursor(10, 260);
-  // tft.print(NEO6.altitude.meters(),3);
-}
-
-void Screenthree()
-{
-  tft.setTextSize(4);
-
-  tft.setCursor(10, 10);
-  tft.println("fourth");
-  tft.setCursor(10, 110);
-  tft.println("screen");
-}
-
-void ScreenFour()
-{
-  tft.setTextSize(4);
-
-  tft.setCursor(10, 10);
-  tft.println("fifth");
-  tft.setCursor(10, 110);
-  tft.println("screen");
-}
-
-void ScreenFive()
-{
-  tft.setTextSize(4);
-
-  tft.setCursor(10, 10);
-  tft.println("sixth");
-  tft.setCursor(10, 110);
-  tft.println("screen");
-}
-
-void ScreenSix()
-{
-  tft.setTextSize(4);
-
-  tft.setCursor(10, 10);
-  tft.println("seventh");
-  tft.setCursor(10, 110);
-  tft.println("screen");
-}
-
-void ScreenSeven()
-{
-  tft.setTextSize(4);
-
-  tft.setCursor(10, 10);
-  tft.println("eighth");
-  tft.setCursor(10, 110);
-  tft.println("screen");
-}
-
-void Screeneight()
-{
-  tft.setTextSize(4);
-
-  tft.setCursor(10, 10);
-  tft.println("ninth");
-  tft.setCursor(10, 110);
-  tft.println("screen");
-}
-
-void ScreenNav()
-{
-  // screennavigation
-  if (gen_edge_det)
-  {
-    tft.fillScreen(TFT_BLACK);
-  }
-  
-  switch (NavCounter)
-  {
-  case 0:
-    ScreenZero();
-    break;
-  case 1:
-    ScreenOne();
-    break;
-  case 2:
-    ScreenTwo();
-    break;
-  case 3:
-  Screenthree();
-    break;
-  case 4:
-  ScreenFour();
-    break;
-  case 5:
-  ScreenFive();
-    break;
-  case 6:
-  ScreenSix();
-    break;
-  case 7:
-  ScreenSeven();
-    break;
-  case 8:
-  Screeneight();
-    break;
-  default:
-    break;
-  }
-}
-
+//  check for Touchscreen inputs
 void HandleTouchscreen()
 {
   if (tft.getTouch(&x, &y))
@@ -336,15 +349,7 @@ void HandleTouchscreen()
   }
 }
 
-
-//  Fastled
-// How many leds in your strip?
-#define NUM_LEDS 1
-#define DATA_PIN 13
-CRGB leds[NUM_LEDS];
-
-int hue = 0;
-
+//  WS2812 Ledshenanigans
 void Ledshenanigans()
 {
   leds[0] = CHSV(hue++, 255, 255);
@@ -353,16 +358,51 @@ void Ledshenanigans()
     hue = 0;
 }
 
-//  All GPS related stuff
-// A sample NMEA stream cuz GPS wont get a fix ffs
-int simSeconds = 0;
-const char *gpsStream =
-    "$GPGGA,135135.130,4640.778,N,01109.212,E,1,12,1.0,0.0,M,0.0,M,,*6A\r\n"
-    "$GPRMC,135135.130,A,4640.778,N,01109.212,E,,,030325,000.0,W*79\r\n";
+/*
+//  Handle NEO6M GPS module
+-  Get GPS fix
+-  Get NMEA data
+-  Parse NMEA data
+-  Get GPS sattelite count
+-  Get GPS location
+-  Get GPS time
+-  Get GPS altitude
+-  Get GPS speed
+-  Get GPS course
+-  give data to screen
+  -  0 Time and Date and temp
+  -  1 Lon Lat Alt Speed
+  -  2 Sattelite count and heading/course
+  -  3 Big Speedometer
+  -  4 List of sattelites
+  -  6 Big Compass
 
-//  All IMU related stuff
-//  All SD related stuff
 
+//  Handle IMU MPU6050
+-  Get IMU data
+-  Get IMU gyro data
+-  Get IMU accel data
+-  Get IMU temp data
+-  give data to screen
+  -  0 Time and Date and temp
+  -  5 rotation of the device and accelleration
+
+//  Handle SD
+-  SD will be used to store the GPX data
+-  did a tracking start? check the touchscreen/button
+-  did a tracking stop? check the touchscreen/button
+-  check if SD card is present
+-  if not present give error to screen
+-  if present create a GPX-file
+-  write GPS-parsed data to file in gpx format
+
+-  give data to screen
+  -  7 idk honestly SD card info? tracking info and buttons to start/stop tracking (center button/touchfield)
+  -  8 error inf screen GPS not found/no fix or SD card not found, maybe return to screen 0 after 5 seconds and return here again if no fix is found every minute or so
+*/
+
+
+//  Just a blinky thing
 //  Mainly for debuging and sanity checks
 void StillAlive()
 {
@@ -391,7 +431,7 @@ void setup()
 
   //  Setup ws2812 led
   FastLED.addLeds<WS2812, DATA_PIN, RGB>(leds, NUM_LEDS);
-  FastLED.setBrightness(25);
+  FastLED.setBrightness(2);
 
   //  Start tft
   tft.init();
@@ -400,7 +440,6 @@ void setup()
   // calibrate touch
   tft.setRotation(3);
   tft.fillScreen((0xFFFF));
-
   tft.setCursor(20, 0, 2);
   tft.setTextColor(TFT_WHITE,TFT_BLACK);
   tft.setTextSize(2);
@@ -454,7 +493,7 @@ void loop()
   //checkButtons(); //  Buttons work
   HandleTouchscreen();
   ScreenNav();
-  Ledshenanigans();
+  //Ledshenanigans();
 
   StillAlive(); // just blink build in led 1Hz
 }
