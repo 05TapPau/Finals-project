@@ -77,14 +77,31 @@ const char *gpsStream =
 //  All usable Screens
 void ScreenZero()
 {
-  tft.setTextSize(7);
+  tft.setTextSize(7);  //  Pixelsize of standart adafruit font 5x7 squares, 1 square 7x7 pixels spaceing inbetween characters is also 7 pixels
   tft.drawRoundRect(50, 50, 220, 100, 10, TFT_WHITE);   //  Time
-  tft.setCursor(65, 75);
-  tft.println("00"/*(millis() / (10 * 60 * 60)) % 24 NEO6.time.hour()*/);
-  tft.setCursor(180, 75);
-  tft.println("00"/*(millis() / (10 * 60)) % 60 NEO6.time.minute()*/);
+  tft.setCursor(73, 75);
+  tft.println("12"/*(millis() / (10 * 60 * 60)) % 24 NEO6.time.hour()*/);
+  tft.setTextColor(TFT_WHITE);
+  tft.setCursor(143, 75);
+  tft.println(":");
+  tft.setTextColor(TFT_WHITE, TFT_BLACK, true);
+  tft.setCursor(171, 75);
+  tft.println("34"/*(millis() / (10 * 60)) % 60 NEO6.time.minute()*/);
 
-  tft.drawRoundRect(50, 190, 220, 100, 10, TFT_WHITE);  //  Date
+  tft.drawRoundRect(50, 180, 220, 120, 10, TFT_WHITE);  //  Date
+  tft.setCursor(70, 205);
+  tft.println("12"/*(millis() / (10 * 60 * 60)) % 24 NEO6.time.hour()*/);
+  tft.setTextColor(TFT_WHITE);
+  tft.setCursor(139, 205);
+  tft.println(".");
+  tft.setTextColor(TFT_WHITE, TFT_BLACK, true);
+  tft.setCursor(171, 205);
+  tft.println("34"/*(millis() / (10 * 60)) % 60 NEO6.time.minute()*/);
+  tft.setTextSize(4);
+  tft.setCursor(114,265);
+  tft.println("2025");
+
+  tft.setTextSize(7);
   tft.drawRoundRect(50, 330, 220, 100, 10, TFT_WHITE);  //  Temp
 
 
