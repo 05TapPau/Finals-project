@@ -92,8 +92,10 @@ void ScreenZero()
   tft.setCursor(70, 205);
   tft.println("12"/*(millis() / (10 * 60 * 60)) % 24 NEO6.time.hour()*/);
   tft.setTextColor(TFT_WHITE);
-  tft.setCursor(139, 205);
+  tft.setCursor(148, 226);  
+  tft.setTextSize(4);
   tft.println(".");
+  tft.setTextSize(7);
   tft.setTextColor(TFT_WHITE, TFT_BLACK, true);
   tft.setCursor(171, 205);
   tft.println("34"/*(millis() / (10 * 60)) % 60 NEO6.time.minute()*/);
@@ -103,7 +105,14 @@ void ScreenZero()
 
   tft.setTextSize(7);
   tft.drawRoundRect(50, 330, 220, 100, 10, TFT_WHITE);  //  Temp
-
+  tft.setCursor(80,355);
+  tft.print("25"/*get temp from IMU*/);
+  tft.setCursor(163, 345);
+  tft.setTextSize(4);
+  tft.print("o");
+  tft.setTextSize(7);
+  tft.setCursor(190,355);
+  tft.print("C");
 
   /*
   tft.setCursor(120, 10);
@@ -338,7 +347,6 @@ void HandleTouchscreen()
       Serial.println("I4 pressed");
       edgedetected[4] = true;
       gen_edge_det = 1;
-
       updateCounter(3); // Add 3
     }
     if (x < 320 and x > 214 and y < 330 and y > 180 and !edgedetected[1]) //  Down
@@ -346,7 +354,6 @@ void HandleTouchscreen()
       Serial.println("I1 pressed");
       edgedetected[1] = true;
       gen_edge_det = 1;
-
       updateCounter(-3); // Subtract 3
     }
     if (y < 480 and y > 330 and x < 214 and x > 106 and !edgedetected[0]) //  Left
@@ -354,16 +361,14 @@ void HandleTouchscreen()
       Serial.println("I0 pressed");
       edgedetected[0] = true;
       gen_edge_det = 1;
-
-      updateCounter(1); // Add 1
+      updateCounter(-1);  // Subtract 1
     }
     if (y < 180 and y > 30  and x < 214 and x > 106 and !edgedetected[3]) //  Right
     {
       Serial.println("I3 pressed");
       edgedetected[3] = true;
       gen_edge_det = 1;
-
-      updateCounter(-1); // Subtract 1
+      updateCounter(1);   // Add 1
     }
   }
   else
