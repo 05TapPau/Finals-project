@@ -11,11 +11,10 @@
 //  If you found this code helpfull and or have any questions contact me i would be interested to se what others do with this prototype
 //  Have fun
 
-
 //  included Librries
 #include <Arduino.h>
 #include "FS.h"
-#include <TFT_eSPI.h>   // remove from libdeps
+#include <TFT_eSPI.h> // remove from libdeps
 #include <FastLED.h>
 
 // for testing only
@@ -33,7 +32,7 @@ unsigned long currentMillis = 0, previousMillis = 0;
 bool edgedetected[5] = {0, 0, 0, 0, 0}; //  flags to recognize if there was a falling edge (only for 1 cycle)
 bool PrevState[5] = {0, 0, 0, 0, 0};    // used to check for falling edges (Buttons pullups)
 bool gen_edge_det = 0;                  // gets set if there was a edge detected no matter what pin
-int NavCounter = 0; //  Navigation counter for left right and up down
+int NavCounter = 0;                     //  Navigation counter for left right and up down
 
 //  All TFT LCD erlated stuff
 /*  TFT esp defines   >> Usersetup.h  for TrackBoard PCB
@@ -63,8 +62,16 @@ CRGB leds[NUM_LEDS];
 
 int hue = 0;
 
-
 //  All GPS related stuff
+//  Define the RX and TX pins for Serial 2
+#define RXD2 17
+#define TXD2 16
+#define GPS_BAUD 9600
+// Create an instance of the HardwareSerial class for Serial 2
+HardwareSerial gpsSerial(2);
+
+// Start Serial 2 with the defined RX and TX pins and a baud rate of 9600
+
 // A sample NMEA stream cuz GPS wont get a fix ffs
 int simSeconds = 0;
 const char *gpsStream =
@@ -77,33 +84,32 @@ const char *gpsStream =
 //  All usable Screens
 void ScreenZero()
 {
-  tft.setTextSize(7);  //  Pixelsize of standart adafruit font 5x7 squares, 1 square 7x7 pixels spaceing inbetween characters is also 7 pixels
-  tft.drawRoundRect(50, 50, 220, 100, 10, TFT_WHITE);   //  Time
+  tft.setTextSize(7);                                 //  Pixelsize of standart adafruit font 5x7 squares, 1 square 7x7 pixels spaceing inbetween characters is also 7 pixels
+  tft.drawRoundRect(50, 50, 220, 100, 10, TFT_WHITE); //  Time
   tft.setCursor(73, 75);
-  tft.println("12"/*(millis() / (10 * 60 * 60)) % 24 NEO6.time.hour()*/);
+  tft.println("12" /*(millis() / (10 * 60 * 60)) % 24 NEO6.time.hour()*/);
   tft.setTextColor(TFT_WHITE);
   tft.setCursor(143, 75);
   tft.println(":");
   tft.setTextColor(TFT_WHITE, TFT_BLACK, true);
   tft.setCursor(171, 75);
-  tft.println("34"/*(millis() / (10 * 60)) % 60 NEO6.time.minute()*/);
+  tft.println("34" /*(millis() / (10 * 60)) % 60 NEO6.time.minute()*/);
 
-  tft.drawRoundRect(50, 180, 220, 120, 10, TFT_WHITE);  //  Date
+  tft.drawRoundRect(50, 180, 220, 120, 10, TFT_WHITE); //  Date
   tft.setCursor(70, 205);
-  tft.println("12"/*(millis() / (10 * 60 * 60)) % 24 NEO6.time.hour()*/);
+  tft.println("12" /*(millis() / (10 * 60 * 60)) % 24 NEO6.time.hour()*/);
   tft.setTextColor(TFT_WHITE);
   tft.setCursor(139, 205);
   tft.println(".");
   tft.setTextColor(TFT_WHITE, TFT_BLACK, true);
   tft.setCursor(171, 205);
-  tft.println("34"/*(millis() / (10 * 60)) % 60 NEO6.time.minute()*/);
+  tft.println("34" /*(millis() / (10 * 60)) % 60 NEO6.time.minute()*/);
   tft.setTextSize(4);
-  tft.setCursor(114,265);
+  tft.setCursor(114, 265);
   tft.println("2025");
 
   tft.setTextSize(7);
-  tft.drawRoundRect(50, 330, 220, 100, 10, TFT_WHITE);  //  Temp
-
+  tft.drawRoundRect(50, 330, 220, 100, 10, TFT_WHITE); //  Temp
 
   /*
   tft.setCursor(120, 10);
@@ -125,7 +131,7 @@ void ScreenZero()
   */
 }
 void ScreenOne()
-{ 
+{
   tft.setTextSize(4);
 
   tft.setCursor(10, 10);
@@ -227,7 +233,7 @@ void ScreenNav()
     tft.fillScreen(TFT_BLACK);
     gen_edge_det = false;
   }
-  
+
   switch (NavCounter)
   {
   case 0:
@@ -240,22 +246,22 @@ void ScreenNav()
     ScreenTwo();
     break;
   case 3:
-  Screenthree();
+    Screenthree();
     break;
   case 4:
-  ScreenFour();
+    ScreenFour();
     break;
   case 5:
-  ScreenFive();
+    ScreenFive();
     break;
   case 6:
-  ScreenSix();
+    ScreenSix();
     break;
   case 7:
-  ScreenSeven();
+    ScreenSeven();
     break;
   case 8:
-  Screeneight();
+    Screeneight();
     break;
   default:
     break;
@@ -333,7 +339,7 @@ void HandleTouchscreen()
       edgedetected[2] = true;
       gen_edge_det = 1;
     }
-    if (x < 106 and x > 0   and y < 330 and y > 180 and !edgedetected[4]) //  Up
+    if (x < 106 and x > 0 and y < 330 and y > 180 and !edgedetected[4]) //  Up
     {
       Serial.println("I4 pressed");
       edgedetected[4] = true;
@@ -357,7 +363,7 @@ void HandleTouchscreen()
 
       updateCounter(1); // Add 1
     }
-    if (y < 180 and y > 30  and x < 214 and x > 106 and !edgedetected[3]) //  Right
+    if (y < 180 and y > 30 and x < 214 and x > 106 and !edgedetected[3]) //  Right
     {
       Serial.println("I3 pressed");
       edgedetected[3] = true;
@@ -429,7 +435,6 @@ void Ledshenanigans()
   -  8 error inf screen GPS not found/no fix or SD card not found, maybe return to screen 0 after 5 seconds and return here again if no fix is found every minute or so
 */
 
-
 //  Just a blinky thing
 //  Mainly for debuging and sanity checks
 void StillAlive()
@@ -439,6 +444,17 @@ void StillAlive()
   {
     previousMillis = currentMillis;
     digitalWrite(2, !digitalRead(2));
+
+
+
+
+    
+    while (gpsSerial.available() > 0)
+    {
+      // get the byte data from the GPS
+      char gpsData = gpsSerial.read();
+      Serial.print(gpsData);
+    }
   }
 }
 
@@ -469,7 +485,7 @@ void setup()
   tft.setRotation(3);
   tft.fillScreen((0xFFFF));
   tft.setCursor(20, 0, 2);
-  tft.setTextColor(TFT_WHITE,TFT_BLACK);
+  tft.setTextColor(TFT_WHITE, TFT_BLACK);
   tft.setTextSize(2);
   tft.println("calibration run");
   // check file system
@@ -514,14 +530,23 @@ void setup()
   tft.setTextColor(TFT_WHITE, TFT_BLACK, true);
   tft.setRotation(2);
   tft.setTextFont(1); // font 2 kinda nice
+
+  gpsSerial.begin(GPS_BAUD, SERIAL_8N1, RXD2, TXD2);
+  if (gpsSerial.available())
+  {
+    Serial.print("Serial 2 at ");
+    Serial.print(GPS_BAUD);
+    Serial.print(" baud"); // => Dev_Debug(ReportGPSSetup);
+  }
 }
 
 void loop()
 {
-  //checkButtons(); //  Buttons work
+
+  // checkButtons(); //  Buttons work
   HandleTouchscreen();
   ScreenNav();
-  //Ledshenanigans();
+  // Ledshenanigans();
 
   StillAlive(); // just blink build in led 1Hz
 }
