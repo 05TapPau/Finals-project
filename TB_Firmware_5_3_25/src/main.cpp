@@ -17,6 +17,9 @@
 #include <TFT_eSPI.h> // remove from libdeps
 #include <FastLED.h>
 
+//  Logo
+#include "TBLOGO.c"
+
 // for testing only
 unsigned long currentMillis = 0, previousMillis = 0;
 
@@ -84,32 +87,34 @@ const char *gpsStream =
 //  All usable Screens
 void ScreenZero()
 {
+
   tft.setTextSize(7);                                 //  Pixelsize of standart adafruit font 5x7 squares, 1 square 7x7 pixels spaceing inbetween characters is also 7 pixels
   tft.drawRoundRect(50, 50, 220, 100, 10, TFT_WHITE); //  Time
   tft.setCursor(73, 75);
-  tft.println("12" /*(millis() / (10 * 60 * 60)) % 24 NEO6.time.hour()*/);
+  tft.println("12");    //  (millis() / (10 * 60 * 60)) % 24 NEO6.time.hour()
   tft.setTextColor(TFT_WHITE);
   tft.setCursor(143, 75);
   tft.println(":");
   tft.setTextColor(TFT_WHITE, TFT_BLACK, true);
   tft.setCursor(171, 75);
-  tft.println("34" /*(millis() / (10 * 60)) % 60 NEO6.time.minute()*/);
+  tft.println("34" );   //  (millis() / (10 * 60)) % 60 NEO6.time.minute()
 
   tft.drawRoundRect(50, 180, 220, 120, 10, TFT_WHITE); //  Date
   tft.setCursor(70, 205);
-  tft.println("12" /*(millis() / (10 * 60 * 60)) % 24 NEO6.time.hour()*/);
+  tft.println("12" );   //   (millis() / (10 * 60 * 60)) % 24 NEO6.time.hour()
   tft.setTextColor(TFT_WHITE);
   tft.setCursor(139, 205);
   tft.println(".");
   tft.setTextColor(TFT_WHITE, TFT_BLACK, true);
   tft.setCursor(171, 205);
-  tft.println("34" /*(millis() / (10 * 60)) % 60 NEO6.time.minute()*/);
+  tft.println("34" );   //   (millis() / (10 * 60)) % 60 NEO6.time.minute()
   tft.setTextSize(4);
   tft.setCursor(114, 265);
   tft.println("2025");
 
   tft.setTextSize(7);
   tft.drawRoundRect(50, 330, 220, 100, 10, TFT_WHITE); //  Temp
+
 
   /*
   tft.setCursor(120, 10);
@@ -361,7 +366,7 @@ void HandleTouchscreen()
       edgedetected[0] = true;
       gen_edge_det = 1;
 
-      updateCounter(1); // Add 1
+      updateCounter(-1); // Add 1
     }
     if (y < 180 and y > 30 and x < 214 and x > 106 and !edgedetected[3]) //  Right
     {
@@ -369,7 +374,7 @@ void HandleTouchscreen()
       edgedetected[3] = true;
       gen_edge_det = 1;
 
-      updateCounter(-1); // Subtract 1
+      updateCounter(1); // Subtract 1
     }
   }
   else
@@ -538,12 +543,15 @@ void setup()
     Serial.print(GPS_BAUD);
     Serial.print(" baud"); // => Dev_Debug(ReportGPSSetup);
   }
+    //  LOGO on startup
+    tft.drawBitmap(0,0, TBLOGO,320,480,TFT_WHITE);
+    delay(1000);
 }
+
 
 void loop()
 {
-
-  // checkButtons(); //  Buttons work
+  // checkButtons(); //  Buttons work but i use touch cuz more practical
   HandleTouchscreen();
   ScreenNav();
   // Ledshenanigans();

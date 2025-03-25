@@ -44,7 +44,6 @@ void Homescreen()
   tft.println(NEO6.time.minute());
   tft.setCursor(120, 130);
   tft.println(simSeconds/*NEO6.time.second()*/);
-  tft.fillRect()
 
   /*
 tft.setCursor(30, 30);
@@ -191,12 +190,16 @@ void NavFrames(){
 
 void loop()
 {
+  Homescreen();
+  /*
   while (gpsSerial.available() > 0)
   {
     // get the byte data from the GPS
     char gpsData = gpsSerial.read();
     Serial.print(gpsData);
   }
-  delay(1000);
+
   Serial.println("-------------------------------");
+  */
+ delay(1000);
 }
