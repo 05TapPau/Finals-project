@@ -35,7 +35,7 @@ unsigned long currentMillis = 0, previousMillis = 0;
 bool edgedetected[5] = {0, 0, 0, 0, 0}; //  flags to recognize if there was a falling edge (only for 1 cycle)
 bool PrevState[5] = {0, 0, 0, 0, 0};    // used to check for falling edges (Buttons pullups)
 bool gen_edge_det = 0;                  // gets set if there was a edge detected no matter what pin
-int NavCounter = 0;                     //  Navigation counter for left right and up down
+int NavCounter = 2;                     //  Navigation counter for left right and up down
 
 //  All TFT LCD erlated stuff
 /*  TFT esp defines   >> Usersetup.h  for TrackBoard PCB
@@ -83,6 +83,52 @@ const char *gpsStream =
 
 //  All IMU related stuff
 //  All SD related stuff
+
+
+/*
+//  Handle NEO6M GPS module
+-  Get GPS fix
+-  Get NMEA data
+-  Parse NMEA data
+-  Get GPS sattelite count
+-  Get GPS location
+-  Get GPS time
+-  Get GPS altitude
+-  Get GPS speed
+-  Get GPS course
+-  give data to screen
+  -  0 Time and Date and temp
+  -  1 Lon Lat Alt Speed
+  -  2 Sattelite count and heading/course or speed
+  -  3 Big Speedometer
+  -  4 List of sattelites else maybe a matrix for WS2812 8x8 controll?/ button toactivate g sensing activation of WS2812
+  -  6 Big Compass no sensor  would be cool tho
+
+
+//  Handle IMU MPU6050
+-  Get IMU data
+-  Get IMU gyro data
+-  Get IMU accel data
+-  Get IMU temp data
+-  give data to screen
+  -  0 Time and Date and temp
+  -  5 rotation of the device and accelleration
+
+//  Handle SD
+-  SD will be used to store the GPX data
+-  did a tracking start? check the touchscreen/button
+-  did a tracking stop? check the touchscreen/button
+-  check if SD card is present
+-  if not present give error to screen
+-  if present create a GPX-file
+-  write GPS-parsed data to file in gpx format
+
+-  give data to screen
+  -  7 idk honestly SD card info? tracking info and buttons to start/stop tracking (center button/touchfield)
+  -  8 error inf screen GPS not found/no fix or SD card not found, maybe return to screen 0 after 5 seconds and return here again if no fix is found every minute or so
+*/
+
+
 
 //  All usable Screens
 void ScreenZero()
@@ -139,41 +185,49 @@ void ScreenOne()
 {
   tft.setTextSize(4);
 
-  tft.setCursor(10, 10);
+  tft.drawRoundRect(10,5,300,110,15,TFT_WHITE);
+  tft.setCursor(30, 25);
   tft.println("Lon: ");
-  tft.setCursor(10, 60);
+  tft.setCursor(30, 70);
+  tft.println("123456789");
   // tft.print(NEO6.location.lng(),3);
-  tft.setCursor(10, 110);
+
+  tft.drawRoundRect(10,125,300,110,15,TFT_WHITE);
+  tft.setCursor(30, 145);
   tft.println("Lat: ");
-  tft.setCursor(10, 160);
+  tft.setCursor(30, 190);
+  tft.println("987654321");
   // tft.print(NEO6.location.lat(),3);
-  tft.setCursor(10, 210);
+  
+  tft.drawRoundRect(10,245,300,110,15,TFT_WHITE);
+  tft.setCursor(30, 265);
   tft.println("Alt: ");
-  tft.setCursor(10, 260);
+  tft.setCursor(30, 310);
   // tft.print(NEO6.altitude.meters(),3);
-  tft.setCursor(10, 310);
-  tft.println("Speed: ");
-  tft.setCursor(40, 360);
+  tft.print(" m");
+  
+  tft.drawRoundRect(10,365,300,110,15,TFT_WHITE);
+  tft.setCursor(30, 385);
+  tft.println("Heading: ");
+  tft.setCursor(30, 430);
   // tft.print(NEO6.speed.kmph());
-  tft.print(" km/h");
+  tft.print("degrees");
+
 }
 void ScreenTwo()
 {
   tft.setTextSize(4);
+  tft.drawRoundRect(50,50,220,130,15,TFT_WHITE);
+  tft.setCursor(70, 70);
+  tft.println("speed:");
+  tft.setCursor(70, 110);
+  tft.print("km/h");
 
-  tft.setCursor(10, 10);
-  tft.println("third");
-  tft.setCursor(10, 60);
-  // tft.print(NEO6.location.lng(),3);
-  tft.setCursor(10, 110);
-  tft.println("screen");
-  tft.setCursor(10, 160);
-  // tft.print(NEO6.location.lat(),3);
-  tft.setCursor(10, 210);
-  tft.println("idk");
-  tft.setCursor(10, 260);
-  // tft.print(NEO6.altitude.meters(),3);
+  tft.drawRoundRect(50,230,220,200,15,TFT_WHITE);
+  tft.setCursor(70, 270);
+  tft.println("Sat inf:");
 }
+
 void Screenthree()
 {
   tft.setTextSize(4);
@@ -397,49 +451,6 @@ void Ledshenanigans()
     hue = 0;
 }
 
-/*
-//  Handle NEO6M GPS module
--  Get GPS fix
--  Get NMEA data
--  Parse NMEA data
--  Get GPS sattelite count
--  Get GPS location
--  Get GPS time
--  Get GPS altitude
--  Get GPS speed
--  Get GPS course
--  give data to screen
-  -  0 Time and Date and temp
-  -  1 Lon Lat Alt Speed
-  -  2 Sattelite count and heading/course
-  -  3 Big Speedometer
-  -  4 List of sattelites else maybe a matrix for WS2812 8x8 controll?/ button toactivate g sensing activation of WS2812
-  -  6 Big Compass no sensor  would be cool tho
-
-
-//  Handle IMU MPU6050
--  Get IMU data
--  Get IMU gyro data
--  Get IMU accel data
--  Get IMU temp data
--  give data to screen
-  -  0 Time and Date and temp
-  -  5 rotation of the device and accelleration
-
-//  Handle SD
--  SD will be used to store the GPX data
--  did a tracking start? check the touchscreen/button
--  did a tracking stop? check the touchscreen/button
--  check if SD card is present
--  if not present give error to screen
--  if present create a GPX-file
--  write GPS-parsed data to file in gpx format
-
--  give data to screen
-  -  7 idk honestly SD card info? tracking info and buttons to start/stop tracking (center button/touchfield)
-  -  8 error inf screen GPS not found/no fix or SD card not found, maybe return to screen 0 after 5 seconds and return here again if no fix is found every minute or so
-*/
-
 //  Just a blinky thing
 //  Mainly for debuging and sanity checks
 void StillAlive()
@@ -543,9 +554,10 @@ void setup()
     Serial.print(GPS_BAUD);
     Serial.print(" baud"); // => Dev_Debug(ReportGPSSetup);
   }
-    //  LOGO on startup
-    tft.drawBitmap(0,0, TBLOGO,320,480,TFT_WHITE);
+    //  LOGO on startup?
+    tft.pushImage(0, 80, 320, 320, tblogo);
     delay(1000);
+    tft.fillScreen(TFT_BLACK);
 }
 
 
