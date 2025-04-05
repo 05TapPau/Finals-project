@@ -14,8 +14,12 @@
 //  included Librries
 #include <Arduino.h>
 #include "FS.h"
-#include <TFT_eSPI.h> // remove from libdeps
+#include <TFT_eSPI.h>    // remove from libdeps
+#include <TFT_eWidget.h> // Widget library>
 #include <FastLED.h>
+#include "Wire.h"
+#include "SD.h"
+#include "TinyGPS++.h"
 
 //  Logo
 #include "TBLOGO.c"
@@ -35,7 +39,7 @@ unsigned long currentMillis = 0, previousMillis = 0;
 bool edgedetected[5] = {0, 0, 0, 0, 0}; //  flags to recognize if there was a falling edge (only for 1 cycle)
 bool PrevState[5] = {0, 0, 0, 0, 0};    // used to check for falling edges (Buttons pullups)
 bool gen_edge_det = 0;                  // gets set if there was a edge detected no matter what pin
-int NavCounter = 2;                     //  Navigation counter for left right and up down
+int NavCounter = 4;                     //  Navigation counter for left right and up down
 
 //  All TFT LCD erlated stuff
 /*  TFT esp defines   >> Usersetup.h  for TrackBoard PCB
@@ -56,6 +60,7 @@ uint16_t calibrationData[5];
 uint8_t calDataOK = 0;
 
 TFT_eSPI tft = TFT_eSPI();
+MeterWidget speed = MeterWidget(&tft);
 
 //  Fastled
 // How many leds in your strip?
@@ -66,23 +71,41 @@ CRGB leds[NUM_LEDS];
 int hue = 0;
 
 //  All GPS related stuff
+// Create an instance of the HardwareSerial class for Serial 2
+HardwareSerial gpsSerial(2);
+TinyGPSPlus NEO6;
+String year, month, day, hour, minute, second;
+
 //  Define the RX and TX pins for Serial 2
 #define RXD2 17
 #define TXD2 16
 #define GPS_BAUD 9600
-// Create an instance of the HardwareSerial class for Serial 2
-HardwareSerial gpsSerial(2);
 
 // Start Serial 2 with the defined RX and TX pins and a baud rate of 9600
-
 // A sample NMEA stream cuz GPS wont get a fix ffs
 int simSeconds = 0;
 const char *gpsStream =
     "$GPGGA,135135.130,4640.778,N,01109.212,E,1,12,1.0,0.0,M,0.0,M,,*6A\r\n"
     "$GPRMC,135135.130,A,4640.778,N,01109.212,E,,,030325,000.0,W*79\r\n";
 
+    //  GPS related functions
+void fakenema()
+{
+  // get fake nema info for gps cuz gps wont get a fix
+  while (*gpsStream)
+    NEO6.encode(*gpsStream++);
+  delay(100);
+}
+
 //  All IMU related stuff
+float AccX, AccY, AccZ, AngleRoll, AnglePitch, AngleYaw, tempC;
+
 //  All SD related stuff
+#define SD_CS 14 // Chip select pin for SD card module
+#define LoggingInterval 3000 // Interval for logging data in milliseconds 3 sec int
+File root;
+File dataFile;
+String fileID;
 
 
 /*
@@ -128,8 +151,6 @@ const char *gpsStream =
   -  8 error inf screen GPS not found/no fix or SD card not found, maybe return to screen 0 after 5 seconds and return here again if no fix is found every minute or so
 */
 
-
-
 //  All usable Screens
 void ScreenZero()
 {
@@ -137,30 +158,29 @@ void ScreenZero()
   tft.setTextSize(7);                                 //  Pixelsize of standart adafruit font 5x7 squares, 1 square 7x7 pixels spaceing inbetween characters is also 7 pixels
   tft.drawRoundRect(50, 50, 220, 100, 10, TFT_WHITE); //  Time
   tft.setCursor(73, 75);
-  tft.println("12");    //  (millis() / (10 * 60 * 60)) % 24 NEO6.time.hour()
+  tft.println("12"); //  (millis() / (10 * 60 * 60)) % 24 NEO6.time.hour()
   tft.setTextColor(TFT_WHITE);
   tft.setCursor(143, 75);
   tft.println(":");
   tft.setTextColor(TFT_WHITE, TFT_BLACK, true);
   tft.setCursor(171, 75);
-  tft.println("34" );   //  (millis() / (10 * 60)) % 60 NEO6.time.minute()
+  tft.println("34"); //  (millis() / (10 * 60)) % 60 NEO6.time.minute()
 
   tft.drawRoundRect(50, 180, 220, 120, 10, TFT_WHITE); //  Date
   tft.setCursor(70, 205);
-  tft.println("12" );   //   (millis() / (10 * 60 * 60)) % 24 NEO6.time.hour()
+  tft.println("12"); //   (millis() / (10 * 60 * 60)) % 24 NEO6.time.hour()
   tft.setTextColor(TFT_WHITE);
   tft.setCursor(139, 205);
   tft.println(".");
   tft.setTextColor(TFT_WHITE, TFT_BLACK, true);
   tft.setCursor(171, 205);
-  tft.println("34" );   //   (millis() / (10 * 60)) % 60 NEO6.time.minute()
+  tft.println("34"); //   (millis() / (10 * 60)) % 60 NEO6.time.minute()
   tft.setTextSize(4);
   tft.setCursor(114, 265);
   tft.println("2025");
 
   tft.setTextSize(7);
   tft.drawRoundRect(50, 330, 220, 100, 10, TFT_WHITE); //  Temp
-
 
   /*
   tft.setCursor(120, 10);
@@ -185,69 +205,70 @@ void ScreenOne()
 {
   tft.setTextSize(4);
 
-  tft.drawRoundRect(10,5,300,110,15,TFT_WHITE);
+  tft.drawRoundRect(10, 5, 300, 110, 15, TFT_WHITE);
   tft.setCursor(30, 25);
   tft.println("Lon: ");
   tft.setCursor(30, 70);
   tft.println("123456789");
   // tft.print(NEO6.location.lng(),3);
 
-  tft.drawRoundRect(10,125,300,110,15,TFT_WHITE);
+  tft.drawRoundRect(10, 125, 300, 110, 15, TFT_WHITE);
   tft.setCursor(30, 145);
   tft.println("Lat: ");
   tft.setCursor(30, 190);
   tft.println("987654321");
   // tft.print(NEO6.location.lat(),3);
-  
-  tft.drawRoundRect(10,245,300,110,15,TFT_WHITE);
+
+  tft.drawRoundRect(10, 245, 300, 110, 15, TFT_WHITE);
   tft.setCursor(30, 265);
   tft.println("Alt: ");
   tft.setCursor(30, 310);
   // tft.print(NEO6.altitude.meters(),3);
   tft.print(" m");
-  
-  tft.drawRoundRect(10,365,300,110,15,TFT_WHITE);
+
+  tft.drawRoundRect(10, 365, 300, 110, 15, TFT_WHITE);
   tft.setCursor(30, 385);
   tft.println("Heading: ");
   tft.setCursor(30, 430);
   // tft.print(NEO6.speed.kmph());
   tft.print("degrees");
-
 }
 void ScreenTwo()
 {
   tft.setTextSize(4);
-  tft.drawRoundRect(50,50,220,130,15,TFT_WHITE);
+  tft.drawRoundRect(50, 50, 220, 130, 15, TFT_WHITE);
   tft.setCursor(70, 70);
   tft.println("speed:");
   tft.setCursor(70, 110);
   tft.print("km/h");
 
-  tft.drawRoundRect(50,230,220,200,15,TFT_WHITE);
+  tft.drawRoundRect(50, 230, 220, 200, 15, TFT_WHITE);
   tft.setCursor(70, 270);
   tft.println("Sat inf:");
 }
-
 void Screenthree()
 {
-  tft.setTextSize(4);
-
+  tft.setTextSize(2);
   tft.setCursor(10, 10);
-  tft.println("fourth");
-  tft.setCursor(10, 110);
-  tft.println("screen");
+  tft.println("fixe gauge later");
+  /*
+  currentMillis = millis();
+  if(currentMillis - previousMillis >= 1000)
+  {
+    previousMillis = currentMillis;
+    speed.setZones(75, 100, 50, 75, 25, 50, 0, 25);
+    speed.analogSpeedMeter(0,0, 3.0, "km/h", "0", "50", "100", "150", "200"); // Draw analogue meter at 0, 0
+  }
+  */
 }
 void ScreenFour()
 {
-  tft.setTextSize(4);
-
+  tft.setTextSize(2);
   tft.setCursor(10, 10);
-  tft.println("fifth");
-  tft.setCursor(10, 110);
-  tft.println("screen");
+  tft.println("fixe WS2812 later");
 }
 void ScreenFive()
-{
+{ //  rotation info
   tft.setTextSize(4);
 
   tft.setCursor(10, 10);
@@ -442,6 +463,7 @@ void HandleTouchscreen()
   }
 }
 
+
 //  WS2812 Ledshenanigans
 void Ledshenanigans()
 {
@@ -451,8 +473,156 @@ void Ledshenanigans()
     hue = 0;
 }
 
-//  Just a blinky thing
+//  Get IMU data and filter it
+void gyroSignals(void)
+{
+  //  Get the gyro data Filter
+  Wire.beginTransmission(0x68);
+  Wire.write(0x1A);
+  Wire.write(0x05);
+  Wire.endTransmission();
+  //  conf output
+  Wire.beginTransmission(0x68);
+  Wire.write(0x1C);
+  Wire.write(0x10);
+  Wire.endTransmission();
+  //  Pull data from accel
+  Wire.beginTransmission(0x68);
+  Wire.write(0x3B);
+  Wire.endTransmission();
+  Wire.requestFrom(0x68, 6);
+  int16_t AccXLSB = Wire.read() << 8 | Wire.read();
+  int16_t AccYLSB = Wire.read() << 8 | Wire.read();
+  int16_t AccZLSB = Wire.read() << 8 | Wire.read();
+  //  conf and pull gyro
+  Wire.beginTransmission(0x68);
+  Wire.write(0x1B);
+  Wire.write(0x8);
+  Wire.endTransmission();
+  Wire.beginTransmission(0x68);
+  Wire.write(0x43);
+  Wire.endTransmission();
+  Wire.requestFrom(0x68, 6);
+  int16_t GyroX = Wire.read() << 8 | Wire.read();
+  int16_t GyroY = Wire.read() << 8 | Wire.read();
+  int16_t GyroZ = Wire.read() << 8 | Wire.read();
+  //  conf and pull temp
+  Wire.beginTransmission(0x68);
+  Wire.write(0x41);
+  Wire.endTransmission();
+  Wire.requestFrom(0x68, 2);
+  int16_t Temp = Wire.read() << 8 | Wire.read();
+
+  //  convert to physical values [g] + added correction factor for gyro
+  AccX = (float)AccXLSB / 4096.0 - 0.07;
+  AccY = (float)AccYLSB / 4096.0 + 0.01;
+  AccZ = (float)AccZLSB / 4096.0;
+  //  calc acctual degres
+  AngleRoll = atan(AccY / sqrt(pow(AccX, 2) + pow(AccZ, 2))) * (180 / M_PI);
+  AnglePitch = -atan(AccX / sqrt(pow(AccY, 2) + pow(AccZ, 2))) * (180 / M_PI);
+  //  Yaw not really possible due to drift and no magnetometer
+  //  calc Temp in deg C
+  tempC = (float)Temp / 340.0 + 36.53;
+}
+
+//  SD cared functions
+void listDir(fs::FS &fs, const char *dirname, uint8_t levels)
+{
+  Serial.printf("Listing directory: %s\n", dirname);
+
+  File root = fs.open(dirname);
+  if (!root)
+  {
+    Serial.println("Failed to open directory");
+    return;
+  }
+  if (!root.isDirectory())
+  {
+    Serial.println("Not a directory");
+    return;
+  }
+
+  File file = root.openNextFile();
+  while (file)
+  {
+    if (file.isDirectory())
+    {
+      Serial.print("  DIR : ");
+      Serial.println(file.name());
+      if (levels)
+      {
+        listDir(fs, file.name(), levels - 1);
+      }
+    }
+    else
+    {
+      Serial.print("  FILE: ");
+      Serial.print(file.name());
+      Serial.print("  SIZE: ");
+      Serial.println(file.size());
+    }
+    file = root.openNextFile();
+  }
+}
+void createDir(fs::FS &fs, const char *path)
+{
+  Serial.printf("Creating Dir: %s\n", path);
+  if (fs.mkdir(path))
+  {
+    Serial.println("Dir created");
+  }
+  else
+  {
+    Serial.println("mkdir failed");
+  }
+}
+  //  Start a GPX file if card is present and writable
+void start_file()
+{
+  hour = NEO6.time.hour();
+  minute = NEO6.time.minute();
+  second = NEO6.time.second();
+  fileID = hour + minute + second;
+
+  // Write out GPX file header
+  dataFile = SD.open("/" + fileID + ".gpx", FILE_WRITE);
+  dataFile.println("<?xml version=\"1.0\"?>");
+  dataFile.println("<gpx>");
+  dataFile.println("<trk>");
+  dataFile.println("<name>" + fileID + " GPS Route</name>");
+  dataFile.println("<extensions>");
+  dataFile.println("<gpxx:TrackExtension xmlns:gpxx=\"http://www.garmin.com/xmlschemas/GpxExtensions/v3\">");
+  dataFile.println("<gpxx:DisplayColor>Black</gpxx:DisplayColor>");
+  dataFile.println("</gpxx:TrackExtension>");
+  dataFile.println("</extensions>");
+  dataFile.println("<trkseg>");
+}
+void writeFile()
+{
+  // GPX file format
+  dataFile.print("<trkpt lat=\"");
+  dataFile.print(NEO6.location.lat(), 6);
+  dataFile.print("\" lon=\"");
+  dataFile.print(NEO6.location.lng(), 6);
+  dataFile.println("\">");
+  dataFile.print("<ele>");
+  dataFile.print(NEO6.altitude.meters());
+  dataFile.println("</ele>");
+  dataFile.print("<time>");
+  dataFile.print(year + "-" + month + "-" + day + "T");
+  dataFile.print(hour + ":" + minute + ":" + second + "Z");
+  dataFile.println("</time>");
+  dataFile.println("</trkpt>");
+}
+void endfile()
+{ // Write file end data for GPX format
+  dataFile.println("</trkseg>");
+  dataFile.println("</trk>");
+  dataFile.println("</gpx>");
+  dataFile.close();
+}
 //  Mainly for debuging and sanity checks
+//  Just a blinky thing
 void StillAlive()
 {
   currentMillis = millis();
@@ -460,34 +630,55 @@ void StillAlive()
   {
     previousMillis = currentMillis;
     digitalWrite(2, !digitalRead(2));
-
-
-
-
-    
-    while (gpsSerial.available() > 0)
-    {
-      // get the byte data from the GPS
-      char gpsData = gpsSerial.read();
-      Serial.print(gpsData);
-    }
   }
+}
+
+void GPSdebug()
+{
+  while (gpsSerial.available() > 0)
+  {
+    // get the byte data from the GPS
+    char gpsData = gpsSerial.read();
+    Serial.print(gpsData);
+  }
+}
+
+void Tempdebug()
+{
+  //  Print the temp to serial for debuging
+  Serial.print("Temp: ");
+  Serial.print(tempC);
+  Serial.println(" C");
+  Serial.print("AccX: ");
+  Serial.print(AccX);
+  Serial.println(" g");
+  Serial.print("AccY: ");
+  Serial.print(AccY);
+  Serial.println(" g");
+  Serial.print("AccZ: ");
+  Serial.print(AccZ);
+  Serial.println(" g");
+  Serial.print("AngleRoll: ");
+  Serial.print(AngleRoll);
+  Serial.println(" degrees");
+  Serial.print("AnglePitch: ");
+  Serial.print(AnglePitch);
+  Serial.println(" degrees");
 }
 
 void setup()
 {
+  //  Start serial comunication for debuging
+  Serial.begin(115200);
   // Pins used for Buttons, alive Led and backlight
   pinMode(INPUT0, INPUT);
   pinMode(INPUT1, INPUT);
   pinMode(INPUT2, INPUT);
   pinMode(INPUT3, INPUT);
   pinMode(INPUT4, INPUT);
-  pinMode(2, OUTPUT);
-  pinMode(26, OUTPUT);
-  digitalWrite(26, HIGH);
-
-  //  Start serial comunication for debuging
-  Serial.begin(115200);
+  pinMode(2, OUTPUT);     //  Built in led
+  pinMode(26, OUTPUT);    //  Backlight pin for TFT
+  digitalWrite(26, HIGH); //  Backlight on
 
   //  Setup ws2812 led
   FastLED.addLeds<WS2812, DATA_PIN, RGB>(leds, NUM_LEDS);
@@ -541,12 +732,14 @@ void setup()
     }
   }
 
+  //  finalize tft setup
   tft.fillScreen(TFT_BLACK);
   tft.setTextSize(3);
   tft.setTextColor(TFT_WHITE, TFT_BLACK, true);
   tft.setRotation(2);
   tft.setTextFont(1); // font 2 kinda nice
 
+  //  Setup GPS
   gpsSerial.begin(GPS_BAUD, SERIAL_8N1, RXD2, TXD2);
   if (gpsSerial.available())
   {
@@ -554,19 +747,55 @@ void setup()
     Serial.print(GPS_BAUD);
     Serial.print(" baud"); // => Dev_Debug(ReportGPSSetup);
   }
-    //  LOGO on startup?
-    tft.pushImage(0, 80, 320, 320, tblogo);
-    delay(1000);
-    tft.fillScreen(TFT_BLACK);
-}
 
+  //  print the logo on startup (1 second)
+  tft.pushImage(0, 80, 320, 320, tblogo);
+  delay(1000);
+  tft.fillScreen(TFT_BLACK);
+
+  //  Setup IMU
+  Wire.setClock(400000); // Set I2C frequency to 400kHz
+  Wire.begin(21, 22);    // SDA, SCL
+  Wire.beginTransmission(0x68);
+  Wire.write(0x6B);
+  Wire.write(0x00);
+  Wire.endTransmission();
+
+  //  Setup SD
+  if (!SD.begin(5))
+  {
+    Serial.println("Card Mount Failed");
+    return;
+  }
+  uint8_t cardType = SD.cardType();
+  if (cardType == CARD_NONE)
+  {
+    Serial.println("No SD card attached");
+    return;
+  }
+
+  listDir(SD, "/", 0);
+  createDir(SD, "/mydir");
+
+  fakenema();
+  
+  /*this creats a file, names it writes data and closes it*/
+    start_file();
+    writeFile();
+    endfile();
+    
+}
 
 void loop()
 {
   // checkButtons(); //  Buttons work but i use touch cuz more practical
   HandleTouchscreen();
   ScreenNav();
-  // Ledshenanigans();
+  gyroSignals(); //  get gyro data and filter it
+
+  Ledshenanigans();
+
+  // IMU testing
 
   StillAlive(); // just blink build in led 1Hz
 }

@@ -55,7 +55,6 @@ void listDir(fs::FS &fs, const char *dirname, uint8_t levels)
     file = root.openNextFile();
   }
 }
-
 void createDir(fs::FS &fs, const char *path)
 {
   Serial.printf("Creating Dir: %s\n", path);
@@ -68,7 +67,6 @@ void createDir(fs::FS &fs, const char *path)
     Serial.println("mkdir failed");
   }
 }
-
 void start_file()
 {
   hour = NEO6.time.hour();
