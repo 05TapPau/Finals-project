@@ -22,7 +22,7 @@
 #include "TinyGPS++.h"
 
 //  Logo
-#include "TBLOGO.c"
+//  #include "TBLOGO.c"
 
 // for testing only
 unsigned long currentMillis = 0, previousMillis = 0;
@@ -323,7 +323,8 @@ void ScreenSix()
     {
       tft.fillRoundRect(106, 180, 108, 150, 15, TFT_RED);
     }
-    else{
+    else
+    {
       tft.fillRoundRect(106, 180, 108, 150, 15, TFT_GREEN);
     }
   }
@@ -695,11 +696,8 @@ void Tempdebug()
   Serial.println(" C");
 }
 
-void setup()
+void gen_IO_SU()
 {
-  //  Start serial comunication for debuging
-  Serial.begin(115200);
-  // Pins used for Buttons, alive Led and backlight
   pinMode(INPUT0, INPUT);
   pinMode(INPUT1, INPUT);
   pinMode(INPUT2, INPUT);
@@ -708,16 +706,12 @@ void setup()
   pinMode(2, OUTPUT);     //  Built in led
   pinMode(26, OUTPUT);    //  Backlight pin for TFT
   digitalWrite(26, HIGH); //  Backlight on
-
-  //  Setup ws2812 led
-  FastLED.addLeds<WS2812, DATA_PIN, RGB>(leds, NUM_LEDS);
-  FastLED.setBrightness(2);
-
-  //  Start tft
+}
+void TFT_Touch_SU()
+{
   tft.init();
   tft.fillScreen(TFT_BLACK);
 
-  // calibrate touch
   tft.setRotation(3);
   tft.fillScreen((0xFFFF));
   tft.setCursor(20, 0, 2);
@@ -767,6 +761,52 @@ void setup()
   tft.setTextColor(TFT_WHITE, TFT_BLACK, true);
   tft.setRotation(2);
   tft.setTextFont(1); // font 2 kinda nice
+}
+void DisplayLogo()
+{
+  // Allocate a buffer to hold the pixel data
+  File file = SPIFFS.open("/TBLOGO.c", "r");
+  uint16_t buffer[320]; // Adjust size based on your display width
+  int y = 80;
+  while (file.available())
+  {
+    // Starting Y position
+
+    if (!file)
+    {
+      Serial.println("Failed to open file for reading");
+      return;
+    }
+    file.read((uint8_t *)buffer, sizeof(buffer));
+    tft.pushImage(0, y, 320, 1, buffer);
+    y++;
+  }
+  file.close();
+}
+void IMU_Setup()
+{
+  Wire.setClock(400000); // Set I2C frequency to 400kHz
+  Wire.begin(21, 22);    // SDA, SCL
+  Wire.beginTransmission(0x68);
+  Wire.write(0x6B);
+  Wire.write(0x00);
+  Wire.endTransmission();
+}
+
+void setup()
+{
+  //  Start serial comunication for debuging
+  Serial.begin(115200);
+  // Pins used for Buttons, alive Led and backlight
+  gen_IO_SU();
+
+  //  Setup ws2812 led
+  FastLED.addLeds<WS2812, DATA_PIN, RGB>(leds, NUM_LEDS);
+  FastLED.setBrightness(2);
+
+  //  Start tft
+  // check for touch calibration/calibrate touch
+  TFT_Touch_SU();
 
   //  Setup GPS
   gpsSerial.begin(GPS_BAUD, SERIAL_8N1, RXD2, TXD2);
@@ -777,18 +817,8 @@ void setup()
     Serial.print(" baud"); // => Dev_Debug(ReportGPSSetup);
   }
 
-  //  print the logo on startup (1 second)
-  tft.pushImage(0, 80, 320, 320, tblogo);
-  delay(1000);
-  tft.fillScreen(TFT_BLACK);
-
   //  Setup IMU
-  Wire.setClock(400000); // Set I2C frequency to 400kHz
-  Wire.begin(21, 22);    // SDA, SCL
-  Wire.beginTransmission(0x68);
-  Wire.write(0x6B);
-  Wire.write(0x00);
-  Wire.endTransmission();
+  IMU_Setup();
 
   //  Setup SD
   if (!SD.begin(5))
@@ -803,6 +833,12 @@ void setup()
     return;
   }
 
+  //  print the logo on startup (1 second)
+  DisplayLogo();
+  delay(1000);
+  tft.fillScreen(TFT_BLACK);
+
+  //  delete after testing
   listDir(SD, "/", 0);
   createDir(SD, "/mydir");
 
