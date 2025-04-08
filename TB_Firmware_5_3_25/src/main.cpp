@@ -39,7 +39,7 @@ unsigned long currentMillis = 0, previousMillis = 0;
 bool edgedetected[5] = {0, 0, 0, 0, 0}; //  flags to recognize if there was a falling edge (only for 1 cycle)
 bool PrevState[5] = {0, 0, 0, 0, 0};    // used to check for falling edges (Buttons pullups)
 bool gen_edge_det = 0;                  // gets set if there was a edge detected no matter what pin
-int NavCounter = 4;                     //  Navigation counter for left right and up down
+int NavCounter = 6;                     //  Navigation counter for left right and up down
 
 //  All TFT LCD erlated stuff
 /*  TFT esp defines   >> Usersetup.h  for TrackBoard PCB
@@ -75,6 +75,7 @@ int hue = 0;
 HardwareSerial gpsSerial(2);
 TinyGPSPlus NEO6;
 String year, month, day, hour, minute, second;
+bool Tracking = false; //  Tracking flag for SD card writing
 
 //  Define the RX and TX pins for Serial 2
 #define RXD2 17
@@ -88,7 +89,7 @@ const char *gpsStream =
     "$GPGGA,135135.130,4640.778,N,01109.212,E,1,12,1.0,0.0,M,0.0,M,,*6A\r\n"
     "$GPRMC,135135.130,A,4640.778,N,01109.212,E,,,030325,000.0,W*79\r\n";
 
-    //  GPS related functions
+//  GPS related functions
 void fakenema()
 {
   // get fake nema info for gps cuz gps wont get a fix
@@ -101,12 +102,11 @@ void fakenema()
 float AccX, AccY, AccZ, AngleRoll, AnglePitch, AngleYaw, tempC;
 
 //  All SD related stuff
-#define SD_CS 14 // Chip select pin for SD card module
+#define SD_CS 14             // Chip select pin for SD card module
 #define LoggingInterval 3000 // Interval for logging data in milliseconds 3 sec int
 File root;
 File dataFile;
 String fileID;
-
 
 /*
 //  Handle NEO6M GPS module
@@ -154,33 +154,40 @@ String fileID;
 //  All usable Screens
 void ScreenZero()
 {
+  //  Screen 0refresh screen every second cuz no important data
+  currentMillis = millis();
+  if (currentMillis - previousMillis >= 1000)
+  {
+    previousMillis = currentMillis;
+    tft.setTextSize(7);                                 //  Pixelsize of standart adafruit font 5x7 squares, 1 square 7x7 pixels spaceing inbetween characters is also 7 pixels
+    tft.drawRoundRect(50, 50, 220, 100, 10, TFT_WHITE); //  Time
+    tft.setCursor(73, 75);
+    tft.println("12"); //  (millis() / (10 * 60 * 60)) % 24 NEO6.time.hour()
+    tft.setTextColor(TFT_WHITE);
+    tft.setCursor(143, 75);
+    tft.println(":");
+    tft.setTextColor(TFT_WHITE, TFT_BLACK, true);
+    tft.setCursor(171, 75);
+    tft.println("34"); //  (millis() / (10 * 60)) % 60 NEO6.time.minute()
 
-  tft.setTextSize(7);                                 //  Pixelsize of standart adafruit font 5x7 squares, 1 square 7x7 pixels spaceing inbetween characters is also 7 pixels
-  tft.drawRoundRect(50, 50, 220, 100, 10, TFT_WHITE); //  Time
-  tft.setCursor(73, 75);
-  tft.println("12"); //  (millis() / (10 * 60 * 60)) % 24 NEO6.time.hour()
-  tft.setTextColor(TFT_WHITE);
-  tft.setCursor(143, 75);
-  tft.println(":");
-  tft.setTextColor(TFT_WHITE, TFT_BLACK, true);
-  tft.setCursor(171, 75);
-  tft.println("34"); //  (millis() / (10 * 60)) % 60 NEO6.time.minute()
+    tft.drawRoundRect(50, 180, 220, 120, 10, TFT_WHITE); //  Date
+    tft.setCursor(70, 205);
+    tft.println("12"); //   (millis() / (10 * 60 * 60)) % 24 NEO6.time.hour()
+    tft.setTextColor(TFT_WHITE);
+    tft.setCursor(139, 205);
+    tft.println(".");
+    tft.setTextColor(TFT_WHITE, TFT_BLACK, true);
+    tft.setCursor(171, 205);
+    tft.println("34"); //   (millis() / (10 * 60)) % 60 NEO6.time.minute()
+    tft.setTextSize(4);
+    tft.setCursor(114, 265);
+    tft.println("2025");
 
-  tft.drawRoundRect(50, 180, 220, 120, 10, TFT_WHITE); //  Date
-  tft.setCursor(70, 205);
-  tft.println("12"); //   (millis() / (10 * 60 * 60)) % 24 NEO6.time.hour()
-  tft.setTextColor(TFT_WHITE);
-  tft.setCursor(139, 205);
-  tft.println(".");
-  tft.setTextColor(TFT_WHITE, TFT_BLACK, true);
-  tft.setCursor(171, 205);
-  tft.println("34"); //   (millis() / (10 * 60)) % 60 NEO6.time.minute()
-  tft.setTextSize(4);
-  tft.setCursor(114, 265);
-  tft.println("2025");
-
-  tft.setTextSize(7);
-  tft.drawRoundRect(50, 330, 220, 100, 10, TFT_WHITE); //  Temp
+    tft.setTextSize(6);
+    tft.drawRoundRect(50, 330, 220, 100, 10, TFT_WHITE); //  Temp
+    tft.setCursor(75, 355);
+    tft.println(tempC);
+  }
 
   /*
   tft.setCursor(120, 10);
@@ -268,22 +275,58 @@ void ScreenFour()
   tft.println("fixe WS2812 later");
 }
 void ScreenFive()
-{ //  rotation info
-  tft.setTextSize(4);
+{ //  rotation and Acceleration info
+  currentMillis = millis();
+  if (currentMillis - previousMillis >= 333)
+  {
+    previousMillis = currentMillis;
 
-  tft.setCursor(10, 10);
-  tft.println("sixth");
-  tft.setCursor(10, 110);
-  tft.println("screen");
+    tft.setTextSize(3);
+    tft.drawRoundRect(20, 20, 280, 210, 15, TFT_WHITE);
+    tft.setCursor(40, 50);
+    tft.println("Roll: ");
+    tft.setCursor(150, 50);
+    tft.println(AnglePitch);
+    tft.setCursor(40, 115);
+    tft.println("Pitch: ");
+    tft.setCursor(150, 115);
+    tft.println(AngleRoll);
+    tft.setCursor(40, 180);
+    tft.println("Yaw: ");
+    tft.setCursor(150, 180);
+    tft.println("NaN"); //  no magnetometer so no yaw
+
+    tft.drawRoundRect(20, 250, 280, 210, 15, TFT_WHITE);
+    tft.setCursor(40, 280);
+    tft.println("X[g]: ");
+    tft.setCursor(150, 280);
+    tft.println(AccX);
+    tft.setCursor(40, 345);
+    tft.println("Y[g]: ");
+    tft.setCursor(150, 345);
+    tft.println(AccY);
+    tft.setCursor(40, 410);
+    tft.println("Z[g]: ");
+    tft.setCursor(150, 410);
+    tft.println(AccZ);
+  }
 }
 void ScreenSix()
 {
   tft.setTextSize(4);
-
-  tft.setCursor(10, 10);
-  tft.println("seventh");
-  tft.setCursor(10, 110);
-  tft.println("screen");
+  currentMillis = millis();
+  if (currentMillis - previousMillis >= 333)
+  {
+    previousMillis = currentMillis;
+    tft.drawRoundRect(20, 20, 280, 440, 15, TFT_WHITE);
+    if (Tracking)
+    {
+      tft.fillRoundRect(106, 180, 108, 150, 15, TFT_RED);
+    }
+    else{
+      tft.fillRoundRect(106, 180, 108, 150, 15, TFT_GREEN);
+    }
+  }
 }
 void ScreenSeven()
 {
@@ -418,6 +461,7 @@ void HandleTouchscreen()
       Serial.println("I2 pressed");
       edgedetected[2] = true;
       gen_edge_det = 1;
+      Tracking = !Tracking; //  Toggle tracking
     }
     if (x < 106 and x > 0 and y < 330 and y > 180 and !edgedetected[4]) //  Up
     {
@@ -462,7 +506,6 @@ void HandleTouchscreen()
     gen_edge_det = 0;
   }
 }
-
 
 //  WS2812 Ledshenanigans
 void Ledshenanigans()
@@ -576,7 +619,7 @@ void createDir(fs::FS &fs, const char *path)
     Serial.println("mkdir failed");
   }
 }
-  //  Start a GPX file if card is present and writable
+//  Start a GPX file if card is present and writable
 void start_file()
 {
   hour = NEO6.time.hour();
@@ -621,6 +664,7 @@ void endfile()
   dataFile.println("</gpx>");
   dataFile.close();
 }
+
 //  Mainly for debuging and sanity checks
 //  Just a blinky thing
 void StillAlive()
@@ -649,21 +693,6 @@ void Tempdebug()
   Serial.print("Temp: ");
   Serial.print(tempC);
   Serial.println(" C");
-  Serial.print("AccX: ");
-  Serial.print(AccX);
-  Serial.println(" g");
-  Serial.print("AccY: ");
-  Serial.print(AccY);
-  Serial.println(" g");
-  Serial.print("AccZ: ");
-  Serial.print(AccZ);
-  Serial.println(" g");
-  Serial.print("AngleRoll: ");
-  Serial.print(AngleRoll);
-  Serial.println(" degrees");
-  Serial.print("AnglePitch: ");
-  Serial.print(AnglePitch);
-  Serial.println(" degrees");
 }
 
 void setup()
@@ -778,12 +807,11 @@ void setup()
   createDir(SD, "/mydir");
 
   fakenema();
-  
+
   /*this creats a file, names it writes data and closes it*/
-    start_file();
-    writeFile();
-    endfile();
-    
+  start_file();
+  writeFile();
+  endfile();
 }
 
 void loop()
@@ -797,5 +825,5 @@ void loop()
 
   // IMU testing
 
-  StillAlive(); // just blink build in led 1Hz
+  //  StillAlive(); // just blink build in led 1Hz
 }
