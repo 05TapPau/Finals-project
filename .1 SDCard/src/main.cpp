@@ -127,7 +127,7 @@ void fakenema()
 void setup()
 {
   Serial.begin(115200);
-  if (!SD.begin(5))
+  if (!SD.begin(14))
   {
     Serial.println("Card Mount Failed");
     return;
@@ -144,11 +144,11 @@ void setup()
 
   fakenema();
   
-    /*this creats a file, names it writes data and closes it
+    // this creats a file, names it writes data and closes it
       start_file();
       writeFile();
       endfile();
-    */
+    
 }
 
 void loop()
