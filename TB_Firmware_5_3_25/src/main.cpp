@@ -319,12 +319,16 @@ void ScreenSix()
   {
     previousMillis = currentMillis;
     tft.drawRoundRect(20, 20, 280, 440, 15, TFT_WHITE);
+    tft.setTextSize(3);
+    tft.setCursor(40, 50);
     if (Tracking)
     {
+      tft.println("Stop Tracking");
       tft.fillRoundRect(106, 180, 108, 150, 15, TFT_RED);
     }
     else
     {
+      tft.println("Start Tracking");
       tft.fillRoundRect(106, 180, 108, 150, 15, TFT_GREEN);
     }
   }
@@ -710,14 +714,7 @@ void gen_IO_SU()
 void TFT_Touch_SU()
 {
   tft.init();
-  tft.fillScreen(TFT_BLACK);
-
   tft.setRotation(3);
-  tft.fillScreen((0xFFFF));
-  tft.setCursor(20, 0, 2);
-  tft.setTextColor(TFT_WHITE, TFT_BLACK);
-  tft.setTextSize(2);
-  tft.println("calibration run");
   // check file system
   if (!SPIFFS.begin())
   {
@@ -808,6 +805,11 @@ void setup()
   // check for touch calibration/calibrate touch
   TFT_Touch_SU();
 
+  //  print the logo on startup (1 second)
+  //DisplayLogo();
+  //delay(1000);
+  tft.fillScreen(TFT_BLACK);
+
   //  Setup GPS
   gpsSerial.begin(GPS_BAUD, SERIAL_8N1, RXD2, TXD2);
   if (gpsSerial.available())
@@ -832,11 +834,6 @@ void setup()
     Serial.println("No SD card attached");
     return;
   }
-
-  //  print the logo on startup (1 second)
-  DisplayLogo();
-  delay(1000);
-  tft.fillScreen(TFT_BLACK);
 
   //  delete after testing
   listDir(SD, "/", 0);
