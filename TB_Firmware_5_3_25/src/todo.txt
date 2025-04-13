@@ -1,0 +1,43 @@
+/*
+//  Handle NEO6M GPS module
+-  Get GPS fix
+-  Get NMEA data
+-  Parse NMEA data
+-  Get GPS sattelite count
+-  Get GPS location
+-  Get GPS time
+-  Get GPS altitude
+-  Get GPS speed
+-  Get GPS course
+-  give data to screen
+  -  0 Time and Date and temp
+  -  1 Lon Lat Alt Speed
+  -  2 Sattelite count and heading/course or speed
+  -  3 Big Speedometer
+  -  4 List of sattelites else maybe a matrix for WS2812 8x8 controll?/ button toactivate g sensing activation of WS2812
+  -  6 Big Compass no sensor  would be cool tho
+
+
+//  Handle IMU MPU6050              done
+-  Get IMU data
+-  Get IMU gyro data
+-  Get IMU accel data
+-  Get IMU temp data
+-  give data to screen
+  -  0 Temp
+  -  5 rotation of the device and accelleration
+
+
+//  Handle SD
+-  SD will be used to store the GPX data
+-  did a tracking start? check the touchscreen/button
+-  did a tracking stop? check the touchscreen/button
+-  check if SD card is present
+-  if not present give error to screen
+-  if present create a GPX-file
+-  write GPS-parsed data to file in gpx format
+
+-  give data to screen
+  -  7 idk honestly SD card info? tracking info and buttons to start/stop tracking (center button?)
+  -  8 error inf screen GPS not found/no fix or SD card not found, maybe return to screen 0 after 5 seconds and return here again if no fix is found every minute or so
+*/

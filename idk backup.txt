@@ -1,3 +1,23 @@
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 //  Firmware for a finals project at the school TFO-Meran 2025
 //  Project Name:
 //  -TrackBoard
@@ -39,7 +59,7 @@ unsigned long currentMillis = 0, previousMillis = 0;
 bool edgedetected[5] = {0, 0, 0, 0, 0}; //  flags to recognize if there was a falling edge (only for 1 cycle)
 bool PrevState[5] = {0, 0, 0, 0, 0};    // used to check for falling edges (Buttons pullups)
 bool gen_edge_det = 0;                  // gets set if there was a edge detected no matter what pin
-int NavCounter = 6;                     //  Navigation counter for left right and up down
+int NavCounter = 0;                     //  Navigation counter for left right and up down
 
 //  All TFT LCD erlated stuff
 /*  TFT esp defines   >> Usersetup.h  for TrackBoard PCB
@@ -74,7 +94,7 @@ int hue = 0;
 // Create an instance of the HardwareSerial class for Serial 2
 HardwareSerial gpsSerial(2);
 TinyGPSPlus NEO6;
-String year, month, day, hour, minute, second;
+String year, month, day, hour, minute, second, latitude, longitude, SatCount, Altitude, Speed, Heading;
 bool Tracking = false; //  Tracking flag for SD card writing
 
 //  Define the RX and TX pins for Serial 2
@@ -108,48 +128,6 @@ File root;
 File dataFile;
 String fileID;
 
-/*
-//  Handle NEO6M GPS module
--  Get GPS fix
--  Get NMEA data
--  Parse NMEA data
--  Get GPS sattelite count
--  Get GPS location
--  Get GPS time
--  Get GPS altitude
--  Get GPS speed
--  Get GPS course
--  give data to screen
-  -  0 Time and Date and temp
-  -  1 Lon Lat Alt Speed
-  -  2 Sattelite count and heading/course or speed
-  -  3 Big Speedometer
-  -  4 List of sattelites else maybe a matrix for WS2812 8x8 controll?/ button toactivate g sensing activation of WS2812
-  -  6 Big Compass no sensor  would be cool tho
-
-
-//  Handle IMU MPU6050
--  Get IMU data
--  Get IMU gyro data
--  Get IMU accel data
--  Get IMU temp data
--  give data to screen
-  -  0 Time and Date and temp
-  -  5 rotation of the device and accelleration
-
-//  Handle SD
--  SD will be used to store the GPX data
--  did a tracking start? check the touchscreen/button
--  did a tracking stop? check the touchscreen/button
--  check if SD card is present
--  if not present give error to screen
--  if present create a GPX-file
--  write GPS-parsed data to file in gpx format
-
--  give data to screen
-  -  7 idk honestly SD card info? tracking info and buttons to start/stop tracking (center button/touchfield)
-  -  8 error inf screen GPS not found/no fix or SD card not found, maybe return to screen 0 after 5 seconds and return here again if no fix is found every minute or so
-*/
 
 //  All usable Screens
 void ScreenZero()
@@ -162,26 +140,26 @@ void ScreenZero()
     tft.setTextSize(7);                                 //  Pixelsize of standart adafruit font 5x7 squares, 1 square 7x7 pixels spaceing inbetween characters is also 7 pixels
     tft.drawRoundRect(50, 50, 220, 100, 10, TFT_WHITE); //  Time
     tft.setCursor(73, 75);
-    tft.println("12"); //  (millis() / (10 * 60 * 60)) % 24 NEO6.time.hour()
+    tft.println(hour); //  (millis() / (10 * 60 * 60)) % 24 NEO6.time.hour()
     tft.setTextColor(TFT_WHITE);
     tft.setCursor(143, 75);
     tft.println(":");
     tft.setTextColor(TFT_WHITE, TFT_BLACK, true);
     tft.setCursor(171, 75);
-    tft.println("34"); //  (millis() / (10 * 60)) % 60 NEO6.time.minute()
+    tft.println(minute); //  (millis() / (10 * 60)) % 60 NEO6.time.minute()
 
     tft.drawRoundRect(50, 180, 220, 120, 10, TFT_WHITE); //  Date
     tft.setCursor(70, 205);
-    tft.println("12"); //   (millis() / (10 * 60 * 60)) % 24 NEO6.time.hour()
+    tft.println(day); //   (millis() / (10 * 60 * 60)) % 24 NEO6.time.hour()
     tft.setTextColor(TFT_WHITE);
     tft.setCursor(139, 205);
     tft.println(".");
     tft.setTextColor(TFT_WHITE, TFT_BLACK, true);
     tft.setCursor(171, 205);
-    tft.println("34"); //   (millis() / (10 * 60)) % 60 NEO6.time.minute()
+    tft.println(month); //   (millis() / (10 * 60)) % 60 NEO6.time.minute()
     tft.setTextSize(4);
     tft.setCursor(114, 265);
-    tft.println("2025");
+    tft.println(year);
 
     tft.setTextSize(6);
     tft.drawRoundRect(50, 330, 220, 100, 10, TFT_WHITE); //  Temp
@@ -251,7 +229,9 @@ void ScreenTwo()
 
   tft.drawRoundRect(50, 230, 220, 200, 15, TFT_WHITE);
   tft.setCursor(70, 270);
-  tft.println("Sat inf:");
+  tft.println("Sats:");
+  tft.setCursor(70, 320);
+  tft.println(SatCount);
 }
 void Screenthree()
 {
@@ -319,12 +299,16 @@ void ScreenSix()
   {
     previousMillis = currentMillis;
     tft.drawRoundRect(20, 20, 280, 440, 15, TFT_WHITE);
+    tft.setTextSize(3);
+    tft.setCursor(40, 50);
     if (Tracking)
     {
+      tft.println("Stop Tracking");
       tft.fillRoundRect(106, 180, 108, 150, 15, TFT_RED);
     }
     else
     {
+      tft.println("Start Tracking");
       tft.fillRoundRect(106, 180, 108, 150, 15, TFT_GREEN);
     }
   }
@@ -568,7 +552,31 @@ void gyroSignals(void)
   //  calc Temp in deg C
   tempC = (float)Temp / 340.0 + 36.53;
 }
-
+//  Get GPS data
+void GetGPSdata()
+{
+  while (gpsSerial.available() > 0)
+  {
+    char gpsData = gpsSerial.read();
+    NEO6.encode(gpsData);
+    if (NEO6.location.isUpdated())
+    {
+      year = String(NEO6.date.year());
+      month = String(NEO6.date.month());
+      day = String(NEO6.date.day());
+      hour = String(NEO6.time.hour());
+      minute = String(NEO6.time.minute());
+      second = String(NEO6.time.second());
+      latitude = String(NEO6.location.lat(), 6);
+      longitude = String(NEO6.location.lng(), 6);
+      Altitude = String(NEO6.altitude.meters(), 2);
+      Speed = String(NEO6.speed.kmph(), 2);
+      Heading = String(NEO6.course.deg(), 2);
+      SatCount = String(NEO6.satellites.value());
+    }
+  }
+}
+//  SD card related functions
 //  SD cared functions
 void listDir(fs::FS &fs, const char *dirname, uint8_t levels)
 {
@@ -688,14 +696,6 @@ void GPSdebug()
   }
 }
 
-void Tempdebug()
-{
-  //  Print the temp to serial for debuging
-  Serial.print("Temp: ");
-  Serial.print(tempC);
-  Serial.println(" C");
-}
-
 void gen_IO_SU()
 {
   pinMode(INPUT0, INPUT);
@@ -706,18 +706,12 @@ void gen_IO_SU()
   pinMode(2, OUTPUT);     //  Built in led
   pinMode(26, OUTPUT);    //  Backlight pin for TFT
   digitalWrite(26, HIGH); //  Backlight on
+  Serial.println("GPIO setup done");
 }
 void TFT_Touch_SU()
 {
   tft.init();
-  tft.fillScreen(TFT_BLACK);
-
   tft.setRotation(3);
-  tft.fillScreen((0xFFFF));
-  tft.setCursor(20, 0, 2);
-  tft.setTextColor(TFT_WHITE, TFT_BLACK);
-  tft.setTextSize(2);
-  tft.println("calibration run");
   // check file system
   if (!SPIFFS.begin())
   {
@@ -761,27 +755,37 @@ void TFT_Touch_SU()
   tft.setTextColor(TFT_WHITE, TFT_BLACK, true);
   tft.setRotation(2);
   tft.setTextFont(1); // font 2 kinda nice
+  Serial.println("TFT and Touch setup done");
 }
 void DisplayLogo()
 {
   // Allocate a buffer to hold the pixel data
+  listDir(SPIFFS, "/", 0);
+  tft.setRotation(2);
+  Serial.println("Opening file: /TBLOGO.c");
   File file = SPIFFS.open("/TBLOGO.c", "r");
+  if (!file)
+  {
+    Serial.println("Failed to open file for reading");
+    return;
+  }
+
   uint16_t buffer[320]; // Adjust size based on your display width
   int y = 80;
+  Serial.println("Reading file...");
   while (file.available())
   {
-    // Starting Y position
-
-    if (!file)
+    size_t bytesRead = file.read((uint8_t *)buffer, sizeof(buffer));
+    if (bytesRead > 0)
     {
-      Serial.println("Failed to open file for reading");
-      return;
+      tft.pushImage(0, y, bytesRead / 2, 1, buffer); // Divide by 2 because each pixel is 2 bytes
+      y++;
     }
-    file.read((uint8_t *)buffer, sizeof(buffer));
-    tft.pushImage(0, y, 320, 1, buffer);
-    y++;
   }
+
   file.close();
+  Serial.println("Logo displayed successfully");
+  tft.setRotation(2);
 }
 void IMU_Setup()
 {
@@ -791,6 +795,18 @@ void IMU_Setup()
   Wire.write(0x6B);
   Wire.write(0x00);
   Wire.endTransmission();
+  Serial.println("IMU setup done");
+}
+void GPS_Setup()
+{
+  gpsSerial.begin(GPS_BAUD, SERIAL_8N1, RXD2, TXD2);
+  if (gpsSerial.available())
+  {
+    Serial.print("Serial 2 at ");
+    Serial.print(GPS_BAUD);
+    Serial.print(" baud"); // => Dev_Debug(ReportGPSSetup);
+  }
+  Serial.println("GPS setup done");
 }
 
 void setup()
@@ -808,20 +824,23 @@ void setup()
   // check for touch calibration/calibrate touch
   TFT_Touch_SU();
 
+  //  print the logo on startup (1 second)      This fucker just decides to not work
+  //  DisplayLogo();
+  //  delay(1000);
+  tft.fillScreen(TFT_BLACK);
+
   //  Setup GPS
-  gpsSerial.begin(GPS_BAUD, SERIAL_8N1, RXD2, TXD2);
-  if (gpsSerial.available())
-  {
-    Serial.print("Serial 2 at ");
-    Serial.print(GPS_BAUD);
-    Serial.print(" baud"); // => Dev_Debug(ReportGPSSetup);
-  }
+  GPS_Setup();
 
   //  Setup IMU
   IMU_Setup();
 
   //  Setup SD
-  if (!SD.begin(5))
+  if (!SD.begin(SD_CS))
+  {
+    Serial.println("Card Mount Failed");
+    return;
+  }
   {
     Serial.println("Card Mount Failed");
     return;
@@ -832,11 +851,6 @@ void setup()
     Serial.println("No SD card attached");
     return;
   }
-
-  //  print the logo on startup (1 second)
-  DisplayLogo();
-  delay(1000);
-  tft.fillScreen(TFT_BLACK);
 
   //  delete after testing
   listDir(SD, "/", 0);
@@ -853,15 +867,16 @@ void setup()
 void loop()
 {
   // checkButtons(); //  Buttons work but i use touch cuz more practical
+
   HandleTouchscreen();
   ScreenNav();
-  gyroSignals(); //  get gyro data and filter it
-  fakenema();
+  GetGPSdata(); //  get GPS data and filter it
+  
+  
+  // gyroSignals(); //  get gyro data and filter it
 
-  Ledshenanigans();
+  // Ledshenanigans();
 
-
-  // testing
-  GPSdebug();
+  // IMU testing
   //  StillAlive(); // just blink build in led 1Hz
 }
