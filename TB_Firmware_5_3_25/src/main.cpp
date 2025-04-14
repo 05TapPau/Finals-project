@@ -15,7 +15,6 @@
 #include <Arduino.h>
 #include "FS.h"
 #include <TFT_eSPI.h>    // remove from libdeps
-#include <TFT_eWidget.h> // Widget library>
 #include <FastLED.h>
 #include "Wire.h"
 #include "SD.h"
@@ -34,6 +33,10 @@ unsigned long currentMillis = 0, previousMillis = 0;
 #define INPUT2 32 // Push
 #define INPUT3 36 // Left
 #define INPUT4 39 // Down
+
+#define TFT_CS 33
+#define TOUCH_CS 27
+#define SD_CS 14
 
 //  Flags for Button presses (and or touch recogintion future?)
 bool edgedetected[5] = {0, 0, 0, 0, 0}; //  flags to recognize if there was a falling edge (only for 1 cycle)
@@ -58,9 +61,7 @@ int NavCounter = 6;                     //  Navigation counter for left right an
 uint16_t x, y;
 uint16_t calibrationData[5];
 uint8_t calDataOK = 0;
-
 TFT_eSPI tft = TFT_eSPI();
-MeterWidget speed = MeterWidget(&tft);
 
 //  Fastled
 // How many leds in your strip?
@@ -406,33 +407,41 @@ void checkButtons() // Debounce handled by Hardware 100mF across Buttons
   if (digitalRead(INPUT0) == 0 and digitalRead(INPUT0) != PrevState[0])
   {
     Serial.println("I0 pressed");
-    edgedetected[0] = true;
-    gen_edge_det = 1;
-    updateCounter(3); // Add 3
+      edgedetected[0] = true;
+      gen_edge_det = 1;
+
+      updateCounter(-1); // Add 1
   }
   else if (digitalRead(INPUT1) == 0 and digitalRead(INPUT1) != PrevState[1])
   {
     Serial.println("I1 pressed");
-    edgedetected[1] = true;
-    gen_edge_det = 1;
+      edgedetected[1] = true;
+      gen_edge_det = 1;
 
-    updateCounter(1); // Add 1
+      updateCounter(-3); // Subtract 3
   }
   else if (digitalRead(INPUT2) == 0 and digitalRead(INPUT2) != PrevState[2])
   {
     Serial.println("I2 pressed");
-    edgedetected[2] = true;
-    gen_edge_det = 1;
+      edgedetected[2] = true;
+      gen_edge_det = 1;
+      Tracking = !Tracking; //  Toggle tracking
   }
   else if (digitalRead(INPUT3) == 0 and digitalRead(INPUT3) != PrevState[3])
   {
     Serial.println("I3 pressed");
-    edgedetected[3] = true;
-    gen_edge_det = 1;
+      edgedetected[3] = true;
+      gen_edge_det = 1;
+
+      updateCounter(1); // Subtract 1
   }
   else if (digitalRead(INPUT4) == 0 and digitalRead(INPUT4) != PrevState[4])
   {
-    updateCounter(-3); // Subtract 3
+    Serial.println("I4 pressed");
+      edgedetected[4] = true;
+      gen_edge_det = 1;
+
+      updateCounter(3); // Add 3
   }
   else
   {
@@ -698,14 +707,37 @@ void Tempdebug()
 
 void gen_IO_SU()
 {
-  pinMode(INPUT0, INPUT);
-  pinMode(INPUT1, INPUT);
-  pinMode(INPUT2, INPUT);
-  pinMode(INPUT3, INPUT);
-  pinMode(INPUT4, INPUT);
-  pinMode(2, OUTPUT);     //  Built in led
-  pinMode(26, OUTPUT);    //  Backlight pin for TFT
-  digitalWrite(26, HIGH); //  Backlight on
+
+}
+void SD_Setup(){
+    // Initialize SD card
+
+    Serial.println("Initializing SD card...");
+  digitalWrite(SD_CS, LOW); // Activate SD card
+  delay(10);                // Allow SPI bus to stabilize
+  if (!SD.begin(SD_CS)) {
+      Serial.println("Card Mount Failed");
+      return;
+  }
+  digitalWrite(SD_CS, HIGH); // Deactivate SD card
+  Serial.println("SD card initialized successfully.");
+
+  /*
+  uint8_t cardType = SD.cardType();
+  if (cardType == CARD_NONE)
+  {
+    Serial.println("No SD card found");
+    return;
+  }
+  Serial.printf("SD card type: %d\n", cardType);
+  Serial.printf("SD size: %lluMB\n", SD.cardSize() / (1024 * 1024));
+  */
+
+  //  delete after testing
+  listDir(SD, "/", 0);
+  createDir(SD, "/mydir");
+  fakenema();
+  Serial.println("SD card written successfully.");
 }
 void TFT_Touch_SU()
 {
@@ -713,7 +745,7 @@ void TFT_Touch_SU()
   tft.fillScreen(TFT_BLACK);
 
   tft.setRotation(3);
-  tft.fillScreen((0xFFFF));
+  tft.fillScreen((TFT_WHITE));
   tft.setCursor(20, 0, 2);
   tft.setTextColor(TFT_WHITE, TFT_BLACK);
   tft.setTextSize(2);
@@ -793,22 +825,53 @@ void IMU_Setup()
   Wire.endTransmission();
 }
 
+
 void setup()
 {
   //  Start serial comunication for debuging
   Serial.begin(115200);
-  // Pins used for Buttons, alive Led and backlight
-  gen_IO_SU();
 
+  // Pins used for Buttons, alive Led and backlight
+  //  gen_IO_SU();
+
+    //  conf pins for generalIO
+    pinMode(2, OUTPUT);     //  Built in led
+    pinMode(26, OUTPUT);    //  Backlight pin for TFT
+    digitalWrite(26, HIGH); //  Backlight on
+    //  Pins for buttons
+    pinMode(INPUT0, INPUT);
+    pinMode(INPUT1, INPUT);
+    pinMode(INPUT2, INPUT);
+    pinMode(INPUT3, INPUT);
+    pinMode(INPUT4, INPUT);
+    //  Pins for TFT and SD card SPI and turn all spi devices off
+    pinMode(TFT_CS, OUTPUT);
+    pinMode(TOUCH_CS, OUTPUT);
+    pinMode(SD_CS, OUTPUT);
+    digitalWrite(SD_CS, HIGH);
+
+  //  Setup SPI
+  SPI.begin();
+  //  Setup SD
+  SD_Setup();
+
+  //  Setup TFT and Touchscreen
+  Serial.printf("Initializing TFT... \n");
+  TFT_Touch_SU();
+  
+  /*
   //  Setup ws2812 led
+  Serial.printf("FastLED Setup \n");
   FastLED.addLeds<WS2812, DATA_PIN, RGB>(leds, NUM_LEDS);
   FastLED.setBrightness(2);
-
-  //  Start tft
-  // check for touch calibration/calibrate touch
-  TFT_Touch_SU();
+  */
+ 
+  //  Setup IMU
+  Serial.printf("IMU Setup \n");
+  IMU_Setup();
 
   //  Setup GPS
+  /*
   gpsSerial.begin(GPS_BAUD, SERIAL_8N1, RXD2, TXD2);
   if (gpsSerial.available())
   {
@@ -816,38 +879,11 @@ void setup()
     Serial.print(GPS_BAUD);
     Serial.print(" baud"); // => Dev_Debug(ReportGPSSetup);
   }
-
-  //  Setup IMU
-  IMU_Setup();
-
-  //  Setup SD
-  if (!SD.begin(5))
-  {
-    Serial.println("Card Mount Failed");
-    return;
-  }
-  uint8_t cardType = SD.cardType();
-  if (cardType == CARD_NONE)
-  {
-    Serial.println("No SD card attached");
-    return;
-  }
+  */
 
   //  print the logo on startup (1 second)
-  DisplayLogo();
-  delay(1000);
-  tft.fillScreen(TFT_BLACK);
-
-  //  delete after testing
-  listDir(SD, "/", 0);
-  createDir(SD, "/mydir");
-
-  fakenema();
-
-  /*this creats a file, names it writes data and closes it*/
-  start_file();
-  writeFile();
-  endfile();
+  //DisplayLogo();
+  //delay(1000);
 }
 
 void loop()
@@ -860,8 +896,13 @@ void loop()
 
   Ledshenanigans();
 
-
   // testing
   GPSdebug();
   //  StillAlive(); // just blink build in led 1Hz
 }
+
+/*
+  start_file();
+  writeFile();
+  endfile();
+*/
