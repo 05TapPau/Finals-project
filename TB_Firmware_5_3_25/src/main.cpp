@@ -539,28 +539,6 @@ void gyroSignals(void)
   tempC = (float)Temp / 340.0 + 36.53;
 }
 //  SDcard functions for logging data
-void HandlePrinting2File(){
-  if (Tracking and edgedetected[2])
-  {
-    edgedetected[2] = false;
-    if (SD.open("/"))
-    {
-      Serial.println("Creating new file.");
-      start_file();
-      writeFile();
-    }
-  }
-  if (Tracking and millis() - cBreakMillis3 > LoggingInterval)
-  {
-    writeFile();
-  }
-  if (!Tracking and edgedetected[2])
-  {
-    edgedetected[2] = false;
-    Serial.println("Closing file.");
-    endfile();
-  }
-}
 void start_file()
 {
   hour = NEO6.time.hour();
@@ -604,6 +582,28 @@ void endfile()
   dataFile.println("</trk>");
   dataFile.println("</gpx>");
   dataFile.close();
+}
+void HandlePrinting2File(){
+  if (Tracking and edgedetected[2])
+  {
+    edgedetected[2] = false;
+    if (SD.open("/"))
+    {
+      Serial.println("Creating new file.");
+      start_file();
+      writeFile();
+    }
+  }
+  if (Tracking and millis() - cBreakMillis3 > LoggingInterval)
+  {
+    writeFile();
+  }
+  if (!Tracking and edgedetected[2])
+  {
+    edgedetected[2] = false;
+    Serial.println("Closing file.");
+    endfile();
+  }
 }
 
 //  SD card testing
@@ -880,8 +880,8 @@ void setup()
 //  Main loop
 void loop()
 {
-  // fakenema();
-  realNMEA(); //  get real GPS data
+  fakenema(); //  get fake GPS data for testing and demo
+  //realNMEA(); //  get real GPS data
 
   // checkButtons();      //  checks for Buttonpresses, Buttons work but i use touch cuz more practical
   HandleTouchscreen();    //  checks for virtual button presses/touchscreen
