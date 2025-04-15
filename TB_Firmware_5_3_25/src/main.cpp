@@ -35,9 +35,13 @@
 #define TOUCH_CS 27
 #define SD_CS 14
 
+// TFT Touch calibration
+#define CALIBRATION_FILE "/calibrationData"
+
 //  Timing
 unsigned long currentMillis = 0, previousMillis = 0, currentMillis2 = 0, previousMillis2 = 0, cBreakMillis3 = 0, prvBreakMillis3 = 0; //  millis() timer for all the things
-bool SecondsToggle = 0;                                                                                                               //  Toggle for seconds to update the screen every second
+bool SecondsToggle = 0;   //  Toggle for seconds to update the screen every second
+
 //  Flags for Button presses (and or touch recogintion future?)
 bool edgedetected[5] = {0, 0, 0, 0, 0}; //  flags to recognize if there was a falling edge (only for 1 cycle)
 bool PrevState[5] = {0, 0, 0, 0, 0};    // used to check for falling edges (Buttons pullups)
@@ -45,34 +49,17 @@ bool gen_edge_det = 0;                  // gets set if there was a edge detected
 int NavCounter = 0;                     //  Navigation counter for left right and up down
 
 //  All TFT LCD erlated stuff
-/*  TFT esp defines   >> Usersetup.h  for TrackBoard PCB
-//#define TFT_MISO 19   //  Not used
-#define TFT_MOSI 23
-#define TFT_SCLK 18
-#define TFT_CS   33     // Chip select control pin
-#define TFT_DC   25     // Data Command control pin
-//#define TFT_RST  4    // Reset pin (could connect to RST pin)
-#define TFT_RST  -1     // Set TFT_RST to -1 if display RESET is connected to ESP32 board RST
-#define TFT_BL   26  // LED back-light
-#define TOUCH_CS 27     // Chip select pin (T_CS) of touch screen
-*/
-#define CALIBRATION_FILE "/calibrationData"
-
 uint16_t x, y;
 uint16_t calibrationData[5];
 uint8_t calDataOK = 0;
 TFT_eSPI tft = TFT_eSPI();
 
 //  Fastled
-// How many leds in your strip?
 #define NUM_LEDS 17 //  1 onboard 16 external(2x8)
 #define DATA_PIN 13
 CRGB leds[NUM_LEDS];
 
-int hue = 0;
-
 //  All GPS related stuff
-// Create an instance of the HardwareSerial class for Serial 2
 HardwareSerial gpsSerial(2);
 TinyGPSPlus NEO6;
 String year, month, day, hour, minute, second;
@@ -83,7 +70,6 @@ bool Tracking = false; //  Tracking flag for SD card writing
 #define TXD2 16
 #define GPS_BAUD 9600
 
-// Start Serial 2 with the defined RX and TX pins and a baud rate of 9600
 // A sample NMEA stream cuz GPS wont get a fix ffs
 int simSeconds = 0;
 const char *gpsStream =
@@ -98,6 +84,13 @@ void fakenema()
     NEO6.encode(*gpsStream++);
   delay(100);
 }
+void realNMEA(){
+  // get real nema info for gps
+  while (gpsSerial.available())
+  {
+    NEO6.encode(gpsSerial.read());
+  }
+}
 
 //  All IMU related stuff
 float AccX, AccY, AccZ, AngleRoll, AnglePitch, AngleYaw, tempC;
@@ -108,49 +101,6 @@ float AccX, AccY, AccZ, AngleRoll, AnglePitch, AngleYaw, tempC;
 File root;
 File dataFile;
 String fileID;
-
-/*
-//  Handle NEO6M GPS module
--  Get GPS fix
--  Get NMEA data
--  Parse NMEA data
--  Get GPS sattelite count
--  Get GPS location
--  Get GPS time
--  Get GPS altitude
--  Get GPS speed
--  Get GPS course
--  give data to screen
-  -  0 Time and Date and temp
-  -  1 Lon Lat Alt Speed
-  -  2 Sattelite count and heading/course or speed
-  -  3 Big Speedometer
-  -  4 List of sattelites else maybe a matrix for WS2812 8x8 controll?/ button toactivate g sensing activation of WS2812
-  -  6 Big Compass no sensor  would be cool tho
-
-
-//  Handle IMU MPU6050
--  Get IMU data
--  Get IMU gyro data
--  Get IMU accel data
--  Get IMU temp data
--  give data to screen
-  -  0 Time and Date and temp
-  -  5 rotation of the device and accelleration
-
-//  Handle SD
--  SD will be used to store the GPX data
--  did a tracking start? check the touchscreen/button
--  did a tracking stop? check the touchscreen/button
--  check if SD card is present
--  if not present give error to screen
--  if present create a GPX-file
--  write GPS-parsed data to file in gpx format
-
--  give data to screen
-  -  7 idk honestly SD card info? tracking info and buttons to start/stop tracking (center button/touchfield)
-  -  8 error inf screen GPS not found/no fix or SD card not found, maybe return to screen 0 after 5 seconds and return here again if no fix is found every minute or so
-*/
 
 //  All usable Screens
 void ScreenZero()
@@ -556,7 +506,7 @@ void HandleTouchscreen()
 //  WS2812 Fastled_Breaks
 void Fastled_Breaks()
 {
-  Serial.println("Breaking detected"); //  set all LEDs to red
+  //Serial.println("Breaking detected"); //  set all LEDs to red
   for (int i = 0; i < NUM_LEDS; i++)
   {
     leds[i] = CRGB::Green; // Green is red and red is green for some reason
@@ -734,7 +684,6 @@ void StillAlive()
     digitalWrite(2, !digitalRead(2));
   }
 }
-
 void GPSdebug()
 {
   while (gpsSerial.available() > 0)
@@ -744,7 +693,6 @@ void GPSdebug()
     Serial.print(gpsData);
   }
 }
-
 void Tempdebug()
 {
   //  Print the temp to serial for debuging
@@ -755,6 +703,26 @@ void Tempdebug()
 
 void gen_IO_SU()
 {
+  //  conf pins for generalIO
+  pinMode(2, OUTPUT);     //  Built in led
+  pinMode(26, OUTPUT);    //  Backlight pin for TFT
+  digitalWrite(26, HIGH); //  Backlight on
+  //  Pins for buttons
+  pinMode(INPUT0, INPUT);
+  pinMode(INPUT1, INPUT);
+  pinMode(INPUT2, INPUT);
+  pinMode(INPUT3, INPUT);
+  pinMode(INPUT4, INPUT);
+  //  Pins for TFT and SD card SPI and turn all spi devices off
+
+    /*
+  pinMode(TFT_CS, OUTPUT);
+  pinMode(TOUCH_CS, OUTPUT);
+  pinMode(SD_CS, OUTPUT);
+  digitalWrite(SD_CS, HIGH);
+  //  Setup SD
+  SD_Setup();   // SD fix later conflict with TFT
+  */
 }
 void SD_Setup()
 {
@@ -887,32 +855,10 @@ void setup()
   Serial.begin(115200);
 
   // Pins used for Buttons, alive Led and backlight
-  //  gen_IO_SU();
-
-  //  conf pins for generalIO
-  pinMode(2, OUTPUT);     //  Built in led
-  pinMode(26, OUTPUT);    //  Backlight pin for TFT
-  digitalWrite(26, HIGH); //  Backlight on
-  //  Pins for buttons
-  pinMode(INPUT0, INPUT);
-  pinMode(INPUT1, INPUT);
-  pinMode(INPUT2, INPUT);
-  pinMode(INPUT3, INPUT);
-  pinMode(INPUT4, INPUT);
-  //  Pins for TFT and SD card SPI and turn all spi devices off
+  gen_IO_SU();
 
   //  Setup SPI
   SPI.begin();
-
-  /*
-  pinMode(TFT_CS, OUTPUT);
-  pinMode(TOUCH_CS, OUTPUT);
-  pinMode(SD_CS, OUTPUT);
-  digitalWrite(SD_CS, HIGH);
-
-  //  Setup SD
-  SD_Setup();   // SD fix later conflict with TFT
-  */
 
   //  Setup TFT and Touchscreen
   Serial.printf("Initializing TFT... \n");
@@ -942,13 +888,15 @@ void setup()
 
 void loop()
 {
-  fakenema();
+  // fakenema();
+  realNMEA(); //  get real GPS data
 
   // checkButtons(); //  Buttons work but i use touch cuz more practical
   HandleTouchscreen();
   ScreenNav();
   gyroSignals(); //  get gyro data and filter it
   Fastled_Breaks();
+  HandlePrinting2File();
 
   // testing
   GPSdebug();
