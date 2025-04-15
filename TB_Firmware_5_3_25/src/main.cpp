@@ -14,17 +14,14 @@
 //  included Librries
 #include <Arduino.h>
 #include "FS.h"
-#include <TFT_eSPI.h>    // remove from libdeps
+#include <TFT_eSPI.h> // remove from libdeps
 #include <FastLED.h>
 #include "Wire.h"
 #include "SD.h"
 #include "TinyGPS++.h"
 
 //  Logo
-//  #include "TBLOGO.c"
-
-// for testing only
-unsigned long currentMillis = 0, previousMillis = 0;
+//  #include "TBLOGO.c" changed to SPIFFs
 
 // All Button related stuff
 //   Input Buttons (5Way)  No use if used with touch
@@ -38,11 +35,14 @@ unsigned long currentMillis = 0, previousMillis = 0;
 #define TOUCH_CS 27
 #define SD_CS 14
 
+//  Timing
+unsigned long currentMillis = 0, previousMillis = 0, currentMillis2 = 0, previousMillis2 = 0, cBreakMillis3 = 0, prvBreakMillis3 = 0; //  millis() timer for all the things
+bool SecondsToggle = 0;                                                                                                               //  Toggle for seconds to update the screen every second
 //  Flags for Button presses (and or touch recogintion future?)
 bool edgedetected[5] = {0, 0, 0, 0, 0}; //  flags to recognize if there was a falling edge (only for 1 cycle)
 bool PrevState[5] = {0, 0, 0, 0, 0};    // used to check for falling edges (Buttons pullups)
 bool gen_edge_det = 0;                  // gets set if there was a edge detected no matter what pin
-int NavCounter = 6;                     //  Navigation counter for left right and up down
+int NavCounter = 0;                     //  Navigation counter for left right and up down
 
 //  All TFT LCD erlated stuff
 /*  TFT esp defines   >> Usersetup.h  for TrackBoard PCB
@@ -65,7 +65,7 @@ TFT_eSPI tft = TFT_eSPI();
 
 //  Fastled
 // How many leds in your strip?
-#define NUM_LEDS 1
+#define NUM_LEDS 17 //  1 onboard 16 external(2x8)
 #define DATA_PIN 13
 CRGB leds[NUM_LEDS];
 
@@ -87,8 +87,8 @@ bool Tracking = false; //  Tracking flag for SD card writing
 // A sample NMEA stream cuz GPS wont get a fix ffs
 int simSeconds = 0;
 const char *gpsStream =
-    "$GPGGA,135135.130,4640.778,N,01109.212,E,1,12,1.0,0.0,M,0.0,M,,*6A\r\n"
-    "$GPRMC,135135.130,A,4640.778,N,01109.212,E,,,030325,000.0,W*79\r\n";
+    "$GPGGA,142736.660,4640.778,N,01109.212,E,1,12,1.0,0.0,M,0.0,M,,*6D\r\n"
+    "$GPRMC,142736.660,A,4640.778,N,01109.212,E,,,150425,000.0,W*7E\r\n";
 
 //  GPS related functions
 void fakenema()
@@ -160,32 +160,43 @@ void ScreenZero()
   if (currentMillis - previousMillis >= 1000)
   {
     previousMillis = currentMillis;
+
+    tft.setCursor(144, 75);
+    if (SecondsToggle)
+    {
+      tft.println(":");
+      SecondsToggle = false;
+    }
+    else
+    {
+      SecondsToggle = true;
+      tft.println(" ");
+    }
     tft.setTextSize(7);                                 //  Pixelsize of standart adafruit font 5x7 squares, 1 square 7x7 pixels spaceing inbetween characters is also 7 pixels
     tft.drawRoundRect(50, 50, 220, 100, 10, TFT_WHITE); //  Time
-    tft.setCursor(73, 75);
-    tft.println("12"); //  (millis() / (10 * 60 * 60)) % 24 NEO6.time.hour()
-    tft.setTextColor(TFT_WHITE);
-    tft.setCursor(143, 75);
-    tft.println(":");
     tft.setTextColor(TFT_WHITE, TFT_BLACK, true);
-    tft.setCursor(171, 75);
-    tft.println("34"); //  (millis() / (10 * 60)) % 60 NEO6.time.minute()
+    tft.setCursor(65, 75);
+    tft.println(NEO6.time.hour()); //  (millis() / (10 * 60 * 60)) % 24 NEO6.time.hour()
+    tft.setCursor(179, 75);
+    tft.println(NEO6.time.minute()); //  (millis() / (10 * 60)) % 60 NEO6.time.minute()
 
     tft.drawRoundRect(50, 180, 220, 120, 10, TFT_WHITE); //  Date
-    tft.setCursor(70, 205);
-    tft.println("12"); //   (millis() / (10 * 60 * 60)) % 24 NEO6.time.hour()
     tft.setTextColor(TFT_WHITE);
-    tft.setCursor(139, 205);
+    tft.setCursor(70, 205);
+    tft.println(NEO6.date.day()); //   (millis() / (10 * 60 * 60)) % 24 NEO6.time.hour()
+    tft.setCursor(150, 225);
+    tft.setTextSize(4);
     tft.println(".");
-    tft.setTextColor(TFT_WHITE, TFT_BLACK, true);
+    tft.setTextSize(7);
     tft.setCursor(171, 205);
-    tft.println("34"); //   (millis() / (10 * 60)) % 60 NEO6.time.minute()
+    tft.println(NEO6.date.month()); //   (millis() / (10 * 60)) % 60 NEO6.time.minute()
     tft.setTextSize(4);
     tft.setCursor(114, 265);
-    tft.println("2025");
+    tft.println(NEO6.date.year());
 
     tft.setTextSize(6);
     tft.drawRoundRect(50, 330, 220, 100, 10, TFT_WHITE); //  Temp
+    tft.setTextColor(TFT_WHITE, TFT_BLACK, false);
     tft.setCursor(75, 355);
     tft.println(tempC);
   }
@@ -211,35 +222,38 @@ void ScreenZero()
 }
 void ScreenOne()
 {
+  // prepare screen
   tft.setTextSize(4);
 
+  //  draw longitude, latitude and altitude
   tft.drawRoundRect(10, 5, 300, 110, 15, TFT_WHITE);
   tft.setCursor(30, 25);
   tft.println("Lon: ");
   tft.setCursor(30, 70);
-  tft.println("123456789");
-  // tft.print(NEO6.location.lng(),3);
+  tft.println(NEO6.location.lng(), 5); //  5 decimals, accuracy of 1.1m, 4 11m, 3 111m
+  // tft.print("");
 
   tft.drawRoundRect(10, 125, 300, 110, 15, TFT_WHITE);
   tft.setCursor(30, 145);
   tft.println("Lat: ");
   tft.setCursor(30, 190);
-  tft.println("987654321");
-  // tft.print(NEO6.location.lat(),3);
+  tft.println(NEO6.location.lat(), 5);
+  // tft.print("");
 
   tft.drawRoundRect(10, 245, 300, 110, 15, TFT_WHITE);
   tft.setCursor(30, 265);
   tft.println("Alt: ");
   tft.setCursor(30, 310);
-  // tft.print(NEO6.altitude.meters(),3);
+  tft.print(NEO6.altitude.meters(), 1);
+  // tft.print("300.0");
   tft.print(" m");
 
   tft.drawRoundRect(10, 365, 300, 110, 15, TFT_WHITE);
   tft.setCursor(30, 385);
   tft.println("Heading: ");
   tft.setCursor(30, 430);
-  // tft.print(NEO6.speed.kmph());
-  tft.print("degrees");
+  tft.print(NEO6.course.deg(), 2);
+  tft.print("deg");
 }
 void ScreenTwo()
 {
@@ -247,12 +261,15 @@ void ScreenTwo()
   tft.drawRoundRect(50, 50, 220, 130, 15, TFT_WHITE);
   tft.setCursor(70, 70);
   tft.println("speed:");
-  tft.setCursor(70, 110);
+  tft.setCursor(70, 120);
+  tft.print(NEO6.speed.kmph(), 2); //  (millis() / (10 * 60 * 60)) % 24 NEO6.time.hour()
   tft.print("km/h");
 
   tft.drawRoundRect(50, 230, 220, 200, 15, TFT_WHITE);
   tft.setCursor(70, 270);
   tft.println("Sat inf:");
+  tft.setCursor(70, 320);
+  tft.print(NEO6.satellites.value()); //  (millis() / (10 * 60)) % 60 NEO6.time.minute()
 }
 void Screenthree()
 {
@@ -314,21 +331,38 @@ void ScreenFive()
 }
 void ScreenSix()
 {
-  tft.setTextSize(4);
-  currentMillis = millis();
-  if (currentMillis - previousMillis >= 333)
+  tft.setTextSize(3);
+  currentMillis2 = millis();
+
+  tft.setCursor(35, 50);
+  tft.println("SD Card Error:");
+  tft.setCursor(35, 100);
+  tft.setTextColor(TFT_YELLOW, TFT_BLACK, true);
+  tft.println("Start Tracking:");
+  tft.fillRoundRect(106, 180, 108, 150, 15, TFT_YELLOW);
+  tft.setTextColor(TFT_WHITE, TFT_BLACK, true);
+
+  if (SD.open("/"))
   {
-    previousMillis = currentMillis;
-    tft.drawRoundRect(20, 20, 280, 440, 15, TFT_WHITE);
-    if (Tracking)
+    if (currentMillis2 - previousMillis2 >= 333)
     {
-      tft.fillRoundRect(106, 180, 108, 150, 15, TFT_RED);
-    }
-    else
-    {
-      tft.fillRoundRect(106, 180, 108, 150, 15, TFT_GREEN);
+      previousMillis2 = currentMillis2;
+      tft.drawRoundRect(20, 20, 280, 440, 15, TFT_WHITE);
+      if (Tracking)
+      {
+        tft.setCursor(40, 50);
+        tft.println("Stop Tracking: ");
+        tft.fillRoundRect(106, 180, 108, 150, 15, TFT_RED);
+      }
+      else
+      {
+        tft.setCursor(40, 50);
+        tft.println("Start Tracking: ");
+        tft.fillRoundRect(106, 180, 108, 150, 15, TFT_GREEN);
+      }
     }
   }
+  tft.setTextSize(4);
 }
 void ScreenSeven()
 {
@@ -371,22 +405,24 @@ void ScreenNav()
     ScreenTwo();
     break;
   case 3:
-    Screenthree();
-    break;
-  case 4:
-    ScreenFour();
-    break;
-  case 5:
+    // Screenthree();
     ScreenFive();
     break;
-  case 6:
+  case 4:
+    // ScreenFour();
     ScreenSix();
     break;
+  case 5:
+    // ScreenFive();
+    break;
+  case 6:
+    // ScreenSix();
+    break;
   case 7:
-    ScreenSeven();
+    // ScreenSeven();
     break;
   case 8:
-    Screeneight();
+    // Screeneight();
     break;
   default:
     break;
@@ -396,7 +432,7 @@ void ScreenNav()
 //  Handle Buttons/Touchscreen inputs
 void updateCounter(int increment)
 {
-  NavCounter = (NavCounter + increment + 9) % 9; // Ensure counter stays within 0-9 range
+  NavCounter = (NavCounter + increment + 5) % 5; // Ensure counter stays within 0-9 range
   Serial.print("Counter: ");
   Serial.println(NavCounter);
 }
@@ -407,41 +443,41 @@ void checkButtons() // Debounce handled by Hardware 100mF across Buttons
   if (digitalRead(INPUT0) == 0 and digitalRead(INPUT0) != PrevState[0])
   {
     Serial.println("I0 pressed");
-      edgedetected[0] = true;
-      gen_edge_det = 1;
+    edgedetected[0] = true;
+    gen_edge_det = 1;
 
-      updateCounter(-1); // Add 1
+    updateCounter(-1); // Add 1
   }
   else if (digitalRead(INPUT1) == 0 and digitalRead(INPUT1) != PrevState[1])
   {
     Serial.println("I1 pressed");
-      edgedetected[1] = true;
-      gen_edge_det = 1;
+    edgedetected[1] = true;
+    gen_edge_det = 1;
 
-      updateCounter(-3); // Subtract 3
+    updateCounter(-3); // Subtract 3
   }
   else if (digitalRead(INPUT2) == 0 and digitalRead(INPUT2) != PrevState[2])
   {
     Serial.println("I2 pressed");
-      edgedetected[2] = true;
-      gen_edge_det = 1;
-      Tracking = !Tracking; //  Toggle tracking
+    edgedetected[2] = true;
+    gen_edge_det = 1;
+    Tracking = !Tracking; //  Toggle tracking
   }
   else if (digitalRead(INPUT3) == 0 and digitalRead(INPUT3) != PrevState[3])
   {
     Serial.println("I3 pressed");
-      edgedetected[3] = true;
-      gen_edge_det = 1;
+    edgedetected[3] = true;
+    gen_edge_det = 1;
 
-      updateCounter(1); // Subtract 1
+    updateCounter(1); // Subtract 1
   }
   else if (digitalRead(INPUT4) == 0 and digitalRead(INPUT4) != PrevState[4])
   {
     Serial.println("I4 pressed");
-      edgedetected[4] = true;
-      gen_edge_det = 1;
+    edgedetected[4] = true;
+    gen_edge_det = 1;
 
-      updateCounter(3); // Add 3
+    updateCounter(3); // Add 3
   }
   else
   {
@@ -517,13 +553,24 @@ void HandleTouchscreen()
   }
 }
 
-//  WS2812 Ledshenanigans
-void Ledshenanigans()
+//  WS2812 Fastled_Breaks
+void Fastled_Breaks()
 {
-  leds[0] = CHSV(hue++, 255, 255);
-  FastLED.show();
-  if (hue == 255)
-    hue = 0;
+  Serial.println("Breaking detected"); //  set all LEDs to red
+  for (int i = 0; i < NUM_LEDS; i++)
+  {
+    leds[i] = CRGB::Green; // Green is red and red is green for some reason
+  }
+  if (AccY > 0.01) // 100th of 1G about 10gramms of breaking "Force"
+  {
+    FastLED.setBrightness(255);
+    cBreakMillis3 = millis();
+  }
+  else if (AccY < -0.1 and millis() - cBreakMillis3 > 500)
+  { // keep breaks on for 1/2 sec set all LEDs to green
+    FastLED.setBrightness(32);
+  }
+  FastLED.show(); // Update the LEDs
 }
 
 //  Get IMU data and filter it
@@ -578,7 +625,8 @@ void gyroSignals(void)
   tempC = (float)Temp / 340.0 + 36.53;
 }
 
-//  SD cared functions
+//  SDcard functions
+//  SD card testing
 void listDir(fs::FS &fs, const char *dirname, uint8_t levels)
 {
   Serial.printf("Listing directory: %s\n", dirname);
@@ -707,17 +755,17 @@ void Tempdebug()
 
 void gen_IO_SU()
 {
-
 }
-void SD_Setup(){
-    // Initialize SD card
-
-    Serial.println("Initializing SD card...");
+void SD_Setup()
+{
+  // Initialize SD card
+  Serial.println("Initializing SD card...");
   digitalWrite(SD_CS, LOW); // Activate SD card
   delay(10);                // Allow SPI bus to stabilize
-  if (!SD.begin(SD_CS)) {
-      Serial.println("Card Mount Failed");
-      return;
+  if (!SD.begin(SD_CS))
+  {
+    Serial.println("Card Mount Failed");
+    return;
   }
   digitalWrite(SD_CS, HIGH); // Deactivate SD card
   Serial.println("SD card initialized successfully.");
@@ -824,7 +872,14 @@ void IMU_Setup()
   Wire.write(0x00);
   Wire.endTransmission();
 }
-
+void WS2812_Setup()
+{
+  FastLED.clear(); // Clear all LEDs
+  Serial.printf("FastLED Setup \n");
+  FastLED.addLeds<WS2812, DATA_PIN, RGB>(leds, NUM_LEDS);
+  FastLED.setBrightness(64);
+  FastLED.show(); // Update the LEDs
+}
 
 void setup()
 {
@@ -834,44 +889,44 @@ void setup()
   // Pins used for Buttons, alive Led and backlight
   //  gen_IO_SU();
 
-    //  conf pins for generalIO
-    pinMode(2, OUTPUT);     //  Built in led
-    pinMode(26, OUTPUT);    //  Backlight pin for TFT
-    digitalWrite(26, HIGH); //  Backlight on
-    //  Pins for buttons
-    pinMode(INPUT0, INPUT);
-    pinMode(INPUT1, INPUT);
-    pinMode(INPUT2, INPUT);
-    pinMode(INPUT3, INPUT);
-    pinMode(INPUT4, INPUT);
-    //  Pins for TFT and SD card SPI and turn all spi devices off
-    pinMode(TFT_CS, OUTPUT);
-    pinMode(TOUCH_CS, OUTPUT);
-    pinMode(SD_CS, OUTPUT);
-    digitalWrite(SD_CS, HIGH);
+  //  conf pins for generalIO
+  pinMode(2, OUTPUT);     //  Built in led
+  pinMode(26, OUTPUT);    //  Backlight pin for TFT
+  digitalWrite(26, HIGH); //  Backlight on
+  //  Pins for buttons
+  pinMode(INPUT0, INPUT);
+  pinMode(INPUT1, INPUT);
+  pinMode(INPUT2, INPUT);
+  pinMode(INPUT3, INPUT);
+  pinMode(INPUT4, INPUT);
+  //  Pins for TFT and SD card SPI and turn all spi devices off
 
   //  Setup SPI
   SPI.begin();
+
+  /*
+  pinMode(TFT_CS, OUTPUT);
+  pinMode(TOUCH_CS, OUTPUT);
+  pinMode(SD_CS, OUTPUT);
+  digitalWrite(SD_CS, HIGH);
+
   //  Setup SD
-  SD_Setup();
+  SD_Setup();   // SD fix later conflict with TFT
+  */
 
   //  Setup TFT and Touchscreen
   Serial.printf("Initializing TFT... \n");
   TFT_Touch_SU();
-  
-  /*
-  //  Setup ws2812 led
-  Serial.printf("FastLED Setup \n");
-  FastLED.addLeds<WS2812, DATA_PIN, RGB>(leds, NUM_LEDS);
-  FastLED.setBrightness(2);
-  */
- 
+
   //  Setup IMU
   Serial.printf("IMU Setup \n");
   IMU_Setup();
 
+  //  Setup ws2812 led
+  WS2812_Setup();
+
   //  Setup GPS
-  /*
+
   gpsSerial.begin(GPS_BAUD, SERIAL_8N1, RXD2, TXD2);
   if (gpsSerial.available())
   {
@@ -879,22 +934,21 @@ void setup()
     Serial.print(GPS_BAUD);
     Serial.print(" baud"); // => Dev_Debug(ReportGPSSetup);
   }
-  */
 
-  //  print the logo on startup (1 second)
-  //DisplayLogo();
-  //delay(1000);
+  //  print the logo on startup (1 second)    idfk wyh this does not work anymore
+  // DisplayLogo();
+  // delay(1000);
 }
 
 void loop()
 {
+  fakenema();
+
   // checkButtons(); //  Buttons work but i use touch cuz more practical
   HandleTouchscreen();
   ScreenNav();
   gyroSignals(); //  get gyro data and filter it
-  fakenema();
-
-  Ledshenanigans();
+  Fastled_Breaks();
 
   // testing
   GPSdebug();
