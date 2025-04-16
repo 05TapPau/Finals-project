@@ -46,7 +46,7 @@ bool SecondsToggle = 0;   //  Toggle for seconds to update the screen every seco
 bool edgedetected[5] = {0, 0, 0, 0, 0}; //  flags to recognize if there was a falling edge (only for 1 cycle)
 bool PrevState[5] = {0, 0, 0, 0, 0};    // used to check for falling edges (Buttons pullups)
 bool gen_edge_det = 0;                  // gets set if there was a edge detected no matter what pin
-int NavCounter = 0;                     //  Navigation counter for left right and up down
+int NavCounter = 4;                     //  Navigation counter for left right and up down
 
 //  All TFT LCD erlated stuff
 uint16_t x, y;
@@ -685,6 +685,18 @@ void Tempdebug()
   Serial.print(tempC);
   Serial.println(" C");
 }
+void testSDcard() //  test SD card functions (list dir, create dir, write file)
+{
+  //  test SD card functions (list dir, create dir, write file)
+  if (SD.open("/"))
+  {
+    Serial.println("Creating new file.");
+    start_file();
+    writeFile();
+    endfile();
+    Serial.println("Closing file.");
+  }
+}
 
 //  Setupfunctions just to keep setup clean
 void gen_IO_SU()
@@ -855,6 +867,9 @@ void setup()
   // Pins used for Buttons, alive Led and backlight
   gen_IO_SU();
 
+  //  Setup SD card
+  SD_Setup();
+  
   //  Setup SPI
   SPI.begin();
 
@@ -870,6 +885,7 @@ void setup()
   WS2812_Setup();
 
   //  Setup GPS
+  GPS_Setup();
 
   
   //  print the logo on startup (1 second)    idfk wyh this does not work anymore
@@ -888,8 +904,9 @@ void loop()
   ScreenNav();            //  calculates screen from input and displays it
   gyroSignals();          //  update gyro data
   Fastled_Breaks();       //  breaking registered? Leds => bright red
-  //HandlePrinting2File();  //  Would logg GPX data to SD card but not working yet
+  HandlePrinting2File();  //  Would logg GPX data to SD card but not working yet
   
+
   // testing and debuging
   //  GPSdebug();       //  NMEA/GPS raw data to serial Monitor
   //  StillAlive();     // just blink build in led 1Hz
